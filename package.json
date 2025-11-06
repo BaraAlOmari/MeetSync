@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo-google-fonts/lexend-deca": "^0.4.1",
     "expo": "~54.0.22",
     "expo-status-bar": "~3.0.8",
     "react": "19.1.0",
