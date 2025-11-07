@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function SignUpScreen({ onBack }) {
+export default function SignUpScreen({ onBack, onNext }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,6 +29,7 @@ export default function SignUpScreen({ onBack }) {
     }
     setError('');
     console.log('Sign up', { firstName, lastName, email });
+    if (onNext) onNext();
   };
 
   return (

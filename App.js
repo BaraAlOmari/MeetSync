@@ -8,6 +8,8 @@ import {
 } from '@expo-google-fonts/lexend-deca';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+import AvailabilityScreen from './screens/AvailabilityScreen';
+import HomeScreen from './screens/HomeScreen';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -21,10 +23,25 @@ export default function App() {
   }
   return (
     <View style={styles.container}>
-      {route === 'login' ? (
-        <LoginScreen onSignUpPress={() => setRoute('signup')} />
-      ) : (
-        <SignUpScreen onBack={() => setRoute('login')} />
+      {route === 'login' && (
+        <LoginScreen
+          onSignUpPress={() => setRoute('signup')}
+          onLoginSuccess={() => setRoute('home')}
+        />
+      )}
+      {route === 'signup' && (
+        <SignUpScreen onBack={() => setRoute('login')} onNext={() => setRoute('availability')} />
+      )}
+      {route === 'availability' && (
+        <AvailabilityScreen onNext={() => setRoute('home')} />
+      )}
+      {route === 'home' && (
+        <HomeScreen
+          onCreate={() => console.log('Create Meeting')}
+          onJoin={() => console.log('Join Meeting')}
+          onProfile={() => console.log('Profile')}
+          onHome={() => setRoute('home')}
+        />
       )}
       <StatusBar style="auto" />
     </View>

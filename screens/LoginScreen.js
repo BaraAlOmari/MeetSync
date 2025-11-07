@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function LoginScreen({ onSignUpPress }) {
+export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,6 +22,7 @@ export default function LoginScreen({ onSignUpPress }) {
     }
     setError('');
     console.log('Login', { email });
+    if (onLoginSuccess) onLoginSuccess();
   };
 
   return (
