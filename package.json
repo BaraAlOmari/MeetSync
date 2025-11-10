@@ -10,10 +10,18 @@
   },
   "dependencies": {
     "@expo-google-fonts/lexend-deca": "^0.4.1",
+    "@react-native-community/datetimepicker": "8.4.4",
+    "@react-native-picker/picker": "2.11.1",
     "expo": "~54.0.22",
     "expo-status-bar": "~3.0.8",
+    "lodash": "^4.17.21",
+    "lodash.differencewith": "^4.5.0",
+    "lodash.findindex": "^4.6.0",
+    "lodash.get": "^4.4.2",
+    "lodash.isequal": "^4.5.0",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "react-native-element-dropdown": "^2.12.4"
   },
   "private": true
 }
