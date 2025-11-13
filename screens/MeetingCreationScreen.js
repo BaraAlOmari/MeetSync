@@ -74,7 +74,12 @@ export default function MeetingCreationScreen({ onNext, onBack }) {
             <Ionicons name="chevron-back" size={28} color="#7a7a7a" />
           </TouchableOpacity>
         ) : null}
+
+        <Text style={styles.pageTitle}>Create New Meeting</Text>
       </View>
+
+
+
       <View style={styles.divider} />
 
       <KeyboardAvoidingView
@@ -86,7 +91,6 @@ export default function MeetingCreationScreen({ onNext, onBack }) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 120 }}
         >
-          <Text style={styles.pageTitle}>Create New Meeting:</Text>
 
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Title:</Text>
@@ -311,10 +315,9 @@ const styles = StyleSheet.create({
   headerRow: {
     paddingHorizontal: 16,
     paddingTop: 45,
-    paddingBottom: 8,
+    paddingBottom: 15,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
   },
   brand: {
     textAlign: "left",
@@ -327,11 +330,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   pageTitle: {
-    marginTop: 16,
-    marginHorizontal: 16,
-    color: "#a8a8a8ff",
+    color: "#558B97" ,
     fontSize: 18,
     fontFamily: "LexendDeca_700Bold",
+    marginHorizontal: 10,
   },
   fieldBlock: {
     marginTop: 12,

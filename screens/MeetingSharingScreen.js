@@ -10,15 +10,30 @@ export default function MeetingSharingScreen({ onBack, onHome }) {
             <Ionicons name="chevron-back" size={28} color="#7a7a7a" />
           </TouchableOpacity>
         ) : null}
+        <Text style={styles.pageTitle}>Share your meeting:</Text>
       </View>
       <View style={styles.divider} />
 
       <View style={{ paddingHorizontal: 16, paddingTop: 0 }}>
-        <Text style={styles.pageTitle}>Share your meeting:</Text>
         <Text style={styles.help}>
-          This is a placeholder screen. Wire sharing flow next.
+          Confirm meeting details. And Share meeting with others to view the
+          Recommended Time slots.
         </Text>
       </View>
+      <View style={styles.divider} />
+      <View style={styles.meetingConfirmContainer}>
+        <TouchableOpacity style={styles.editIcon}>
+          <Ionicons name="pencil-sharp" size={28} color="#08a6c2" />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.divider} />
+
+      <View style={styles.meetingSharingContainer}>
+        <View style={styles.addManualConatiner}></View>
+      </View>
+      <View style={styles.divider} />
+
+      <View style={styles.RecommendedTimesContainer}></View>
 
       <TouchableOpacity
         onPress={() => onHome && onHome()}
@@ -32,14 +47,16 @@ export default function MeetingSharingScreen({ onBack, onHome }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ffffff" },
+  container: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+  },
   headerRow: {
     paddingHorizontal: 16,
     paddingTop: 45,
-    paddingBottom: 8,
+    paddingBottom: 15,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
   },
   brand: {
     textAlign: "left",
@@ -52,14 +69,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   pageTitle: {
-    marginTop: 16,
-    marginHorizontal: 0,
-    color: "#a8a8a8ff",
+    color: "#558B97" ,
     fontSize: 18,
     fontFamily: "LexendDeca_700Bold",
+    marginHorizontal: 10,
   },
   help: {
-    marginTop: 8,
+    marginVertical: 8,
     color: "#9aa0a6",
     fontFamily: "LexendDeca_400Regular",
   },
@@ -91,5 +107,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
+  },
+  editIcon: {
+    alignSelf: "flex-end",
+    padding: 25,
   },
 });

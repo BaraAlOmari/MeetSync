@@ -6,21 +6,24 @@ import {
   LexendDeca_400Regular,
   LexendDeca_700Bold,
 } from "@expo-google-fonts/lexend-deca";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./screens/LoginScreen";
 import SignUpScreen from "./screens/SignUpScreen";
 import AvailabilityScreen from "./screens/AvailabilityScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import MeetingCreationScreen from "./screens/MeetingCreationScreen";
-import MeetingSharingScreem from "./screens/MeetingSharingScreen";
+import MeetingSharingScreen from "./screens/MeetingSharingScreen";
 import MeetingJoinScreen from "./screens/MeetingJoinScreen";
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [fontsLoaded] = useFonts({
     LexendDeca_400Regular,
     LexendDeca_700Bold,
   });
-  const [route, setRoute] = useState("login");
   const emptyAvailability = useMemo(
     () => ({ Sun: [], Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [] }),
     []
@@ -31,86 +34,132 @@ export default function App() {
   const handleLogout = () => {
     setUser({ firstName: "", lastName: "", email: "" });
     setAvailability(emptyAvailability);
-    setRoute("login");
   };
 
   if (!fontsLoaded) {
     return null;
   }
   return (
-    <View style={styles.container}>
-      {route === "login" && (
-        <LoginScreen
-          onSignUpPress={() => setRoute("signup")}
-          onLoginSuccess={() => setRoute("home")}
-        />
-      )}
-      {route === "signup" && (
-        <SignUpScreen
-          onBack={() => setRoute("login")}
-          onNext={(data) => {
-            setUser((prev) => ({ ...prev, ...data }));
-            setRoute("availability");
-          }}
-        />
-      )}
-      {route === "availability" && (
-        <AvailabilityScreen
-          onNext={(a) => {
-            const normalized = Object.fromEntries(
-              Object.entries(a).map(([k, v]) => [k, Array.from(v)])
-            );
-            setAvailability(normalized);
-            setRoute("home");
-          }}
-        />
-      )}
-      {route === "home" && (
-        <HomeScreen
-          onCreate={() => setRoute("meetingCreate")}
-          onJoin={() => setRoute("join")}
-          onProfile={() => setRoute("profile")}
-          onLogout={handleLogout}
-          onHome={() => setRoute("home")}
-        />
-      )}
-      {route === "profile" && (
-        <ProfileScreen
-          user={user}
-          availability={availability}
-          onSave={(nextUser, nextAvailability) => {
-            setUser(nextUser);
-            setAvailability(nextAvailability);
-            setRoute("home");
-          }}
-          onHome={() => setRoute("home")}
-          onLogout={handleLogout}
-          onCreate={() => setRoute("meetingCreate")}
-        />
-      )}
-      {route === "meetingCreate" && (
-        <MeetingCreationScreen
-          onNext={() => setRoute("meetingShare")}
-          onBack={() => setRoute("home")}
-        />
-      )}
-      {route === "meetingShare" && (
-        <MeetingSharingScreem
-          onHome={() => setRoute("home")}
-          onBack={() => setRoute("meetingCreate")}
-        />
-      )}
-      {route === "join" && (
-        <MeetingJoinScreen
-          onBack={() => setRoute("home")}
-          onSubmit={(id) => {
-            console.log("Joining with ID:", id);
-            setRoute("home");
-          }}
-        />
-      )}
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Login">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <LoginScreen
+                onSignUpPress={() => navigation.navigate("SignUp")}
+                onLoginSuccess={() => navigation.replace("Home")}
+              />
+              <StatusBar style="auto" />
+            </View>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="SignUp">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <SignUpScreen
+                onBack={() => navigation.goBack()}
+                onNext={(data) => {
+                  setUser((prev) => ({ ...prev, ...data }));
+                  navigation.navigate("Availability");
+                }}
+              />
+            </View>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="Availability">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <AvailabilityScreen
+                onNext={(a) => {
+                  const normalized = Object.fromEntries(
+                    Object.entries(a).map(([k, v]) => [k, Array.from(v)])
+                  );
+                  setAvailability(normalized);
+                  navigation.replace("Home");
+                }}
+              />
+            </View>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="Home">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <HomeScreen
+                onCreate={() => navigation.navigate("MeetingCreate")}
+                onJoin={() => navigation.navigate("Join")}
+                onProfile={() => navigation.navigate("Profile")}
+                onLogout={() => {
+                  handleLogout();
+                  navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+                }}
+                onHome={() => navigation.navigate("Home")}
+              />
+            </View>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="Profile">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <ProfileScreen
+                user={user}
+                availability={availability}
+                onSave={(nextUser, nextAvailability) => {
+                  setUser(nextUser);
+                  setAvailability(nextAvailability);
+                  navigation.navigate("Home");
+                }}
+                onHome={() => navigation.navigate("Home")}
+                onLogout={() => {
+                  handleLogout();
+                  navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+                }}
+                onCreate={() => navigation.navigate("MeetingCreate")}
+              />
+            </View>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="MeetingCreate">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <MeetingCreationScreen
+                onNext={() => navigation.navigate("MeetingShare")}
+                onBack={() => navigation.navigate("Home")}
+              />
+            </View>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="MeetingShare">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <MeetingSharingScreen
+                onHome={() => navigation.navigate("Home")}
+                onBack={() => navigation.navigate("MeetingCreate")}
+              />
+            </View>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="Join">
+          {({ navigation }) => (
+            <View style={styles.container}>
+              <MeetingJoinScreen
+                onBack={() => navigation.goBack()}
+                onSubmit={(id) => {
+                  console.log("Joining with ID:", id);
+                  navigation.navigate("Home");
+                }}
+              />
+            </View>
+          )}
+        </Stack.Screen>
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 

@@ -27,7 +27,9 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
             <Ionicons name="chevron-back" size={28} color="#7a7a7a" />
           </TouchableOpacity>
         ) : null}
+        <Text style={styles.pageTitle}>Join a Meeting</Text>
       </View>
+
       <View style={styles.divider} />
 
       <KeyboardAvoidingView
@@ -35,7 +37,6 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
         style={{ flex: 1 }}
       >
         <View style={styles.content}>
-          <Text style={styles.pageTitle}>Join a Meeting:</Text>
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Meeting ID</Text>
             <TextInput
@@ -72,10 +73,9 @@ const styles = StyleSheet.create({
   headerRow: {
     paddingHorizontal: 16,
     paddingTop: 45,
-    paddingBottom: 8,
+    paddingBottom: 15,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
   },
   brand: {
     fontSize: 32,
@@ -88,13 +88,12 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 0,
   },
   pageTitle: {
-    marginTop: 16,
-    color: "#a8a8a8ff",
+    color: "#558B97" ,
     fontSize: 18,
     fontFamily: "LexendDeca_700Bold",
+    marginHorizontal: 10,
   },
   fieldBlock: {
     marginTop: 12,

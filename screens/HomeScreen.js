@@ -21,8 +21,9 @@ export default function HomeScreen({
         <TouchableOpacity
           onPress={() => setMenuOpen((v) => !v)}
           accessibilityLabel="Profile Menu"
+          style={styles.profileBtn}
         >
-          <Ionicons name="person-circle" size={32} color="#c0c0c0" />
+          <Ionicons name="person-circle" size={45} color="#c0c0c0" />
         </TouchableOpacity>
       </View>
       <View style={styles.divider} />
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
   headerRow: {
     paddingHorizontal: 16,
     paddingTop: 28,
-    paddingBottom: 8,
+    paddingBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -219,6 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    overflow: "visible",
   },
   fabWrapper: {
     position: "absolute",
@@ -226,6 +228,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 20,
     alignItems: "center",
+    zIndex: 50,
   },
   fab: {
     width: 64,
@@ -238,6 +241,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
+    zIndex: 51,
   },
   menuOverlay: {
     position: "absolute",
@@ -278,4 +283,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#eee",
     marginHorizontal: 8,
   },
+  profileBtn: {
+    marginBottom: -12
+  }
 });

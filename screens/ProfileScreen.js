@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   headerRow: {
     paddingHorizontal: 16,
     paddingTop: 28,
-    paddingBottom: 8,
+    paddingBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -340,5 +340,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
+    zIndex: 51,
   },
 });
