@@ -7,6 +7,8 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { auth, db } from "../firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const START_HOUR = 8;
@@ -93,13 +95,16 @@ export default function AvailabilityScreen({ onNext }) {
       </View>
 
       <TouchableOpacity
-        onPress={() => {
-          console.log(
-            "Availability selected",
-            Object.fromEntries(
-              DAYS.map((d) => [d, Array.from(availability[d])])
-            )
+        onPress={async () => {
+          const normalized = Object.fromEntries(
+            DAYS.map((d) => [d, Array.from(availability[d])])
           );
+          const current = auth.currentUser;
+          if (current) {
+            await updateDoc(doc(db, "users", current.uid), {
+              availability: normalized,
+            });
+          }
           if (onNext) onNext(availability);
         }}
         style={styles.fab}

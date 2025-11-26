@@ -8,6 +8,9 @@ import {
 } from "@expo-google-fonts/lexend-deca";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { auth, db } from "./firebaseConfig";
+import { signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import LoginScreen from "./screens/LoginScreen";
 import SignUpScreen from "./screens/SignUpScreen";
 import AvailabilityScreen from "./screens/AvailabilityScreen";
@@ -34,6 +37,7 @@ export default function App() {
   const handleLogout = () => {
     setUser({ firstName: "", lastName: "", email: "" });
     setAvailability(emptyAvailability);
+    signOut(auth).catch(() => {});
   };
 
   if (!fontsLoaded) {
@@ -41,15 +45,49 @@ export default function App() {
   }
   return (
     <NavigationContainer>
+      <StatusBar style="dark" />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login">
           {({ navigation }) => (
             <View style={styles.container}>
               <LoginScreen
                 onSignUpPress={() => navigation.navigate("SignUp")}
-                onLoginSuccess={() => navigation.replace("Home")}
+                onLoginSuccess={async (firebaseUser) => {
+                  try {
+                    const userRef = doc(db, "users", firebaseUser.uid);
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                      const data = snap.data();
+                      setUser((prev) => ({
+                        ...prev,
+                        uid: firebaseUser.uid,
+                        firstName: data.firstName || "",
+                        lastName: data.lastName || "",
+                        email: data.email || firebaseUser.email || "",
+                      }));
+                      if (data.availability) {
+                        setAvailability(data.availability);
+                      } else {
+                        setAvailability(emptyAvailability);
+                      }
+                    } else {
+                      setUser((prev) => ({
+                        ...prev,
+                        uid: firebaseUser.uid,
+                        email: firebaseUser.email || prev.email,
+                      }));
+                      setAvailability(emptyAvailability);
+                    }
+                  } catch (e) {
+                    setUser((prev) => ({
+                      ...prev,
+                      uid: firebaseUser.uid,
+                      email: firebaseUser.email || prev.email,
+                    }));
+                  }
+                  navigation.replace("Home");
+                }}
               />
-              <StatusBar style="auto" />
             </View>
           )}
         </Stack.Screen>
@@ -96,6 +134,12 @@ export default function App() {
                   navigation.reset({ index: 0, routes: [{ name: "Login" }] });
                 }}
                 onHome={() => navigation.navigate("Home")}
+                onViewMeeting={(meeting) =>
+                  navigation.navigate("MeetingShare", {
+                    meeting,
+                    from: "home",
+                  })
+                }
               />
             </View>
           )}
@@ -124,10 +168,16 @@ export default function App() {
         </Stack.Screen>
 
         <Stack.Screen name="MeetingCreate">
-          {({ navigation }) => (
+          {({ navigation, route }) => (
             <View style={styles.container}>
               <MeetingCreationScreen
-                onNext={() => navigation.navigate("MeetingShare")}
+                initialMeeting={route.params?.meeting || null}
+                onNext={(meeting) =>
+                  navigation.navigate("MeetingShare", {
+                    meeting,
+                    from: route.params?.from || "create",
+                  })
+                }
                 onBack={() => navigation.navigate("Home")}
               />
             </View>
@@ -135,11 +185,24 @@ export default function App() {
         </Stack.Screen>
 
         <Stack.Screen name="MeetingShare">
-          {({ navigation }) => (
+          {({ navigation, route }) => (
             <View style={styles.container}>
               <MeetingSharingScreen
+                meeting={route.params?.meeting || null}
                 onHome={() => navigation.navigate("Home")}
-                onBack={() => navigation.navigate("MeetingCreate")}
+                onBack={() => {
+                  if (route.params?.from === "home") {
+                    navigation.goBack();
+                  } else {
+                    navigation.navigate("MeetingCreate");
+                  }
+                }}
+                onEdit={(meeting) =>
+                  navigation.navigate("MeetingCreate", {
+                    meeting,
+                    from: "share",
+                  })
+                }
               />
             </View>
           )}

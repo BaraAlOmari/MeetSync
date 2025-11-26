@@ -10,6 +10,9 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { auth, db } from "../firebaseConfig";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function SignUpScreen({ onBack, onNext }) {
   const [firstName, setFirstName] = useState("");
@@ -18,8 +21,9 @@ export default function SignUpScreen({ onBack, onNext }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (
       !firstName.trim() ||
       !lastName.trim() ||
@@ -43,8 +47,31 @@ export default function SignUpScreen({ onBack, onNext }) {
       return;
     }
     setError("");
-    console.log("Sign up", { firstName, lastName, email });
-    if (onNext) onNext({ firstName, lastName, email });
+    try {
+      setLoading(true);
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: `${firstName.trim()} ${lastName.trim()}`,
+        });
+      }
+      await setDoc(doc(db, "users", cred.user.uid), {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        availability: null,
+        createdAt: Date.now(),
+      });
+      if (onNext) onNext({ firstName, lastName, email, uid: cred.user.uid });
+    } catch (e) {
+      setError("Could not create account. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -201,7 +228,7 @@ export default function SignUpScreen({ onBack, onNext }) {
           <TouchableOpacity
             style={styles.fab}
             accessibilityLabel="Create Account"
-            onPress={handleSubmit}
+            onPress={loading ? undefined : handleSubmit}
           >
             <Ionicons name="arrow-forward" size={35} color="#fff" />
           </TouchableOpacity>

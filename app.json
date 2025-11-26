@@ -20,8 +20,18 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "softwareKeyboardLayoutMode": "pan"
+      "edgeToEdgeEnabled": false,
+      "softwareKeyboardLayoutMode": "pan",
+      "navigationBar": {
+        "visible": "leanback",
+        "backgroundColor": "#f6f7f8",
+        "barStyle": "dark-content"
+      },
+      "statusBar": {
+        "backgroundColor": "#08a6c2",
+        "barStyle": "light-content",
+        "translucent": false
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

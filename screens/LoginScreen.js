@@ -10,13 +10,16 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { auth } from "../firebaseConfig";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email.trim() || !password) {
       setError("Please enter email and password.");
       return;
@@ -30,8 +33,19 @@ export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
       return;
     }
     setError("");
-    console.log("Login", { email });
-    if (onLoginSuccess) onLoginSuccess();
+    try {
+      setLoading(true);
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+      if (onLoginSuccess) onLoginSuccess(cred.user);
+    } catch (e) {
+      setError("Login failed. Check your credentials.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -146,7 +160,7 @@ export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
           <TouchableOpacity
             style={styles.fab}
             accessibilityLabel="Continue"
-            onPress={handleLogin}
+            onPress={loading ? undefined : handleLogin}
           >
             <Ionicons name="arrow-forward" size={35} color="#fff" />
           </TouchableOpacity>

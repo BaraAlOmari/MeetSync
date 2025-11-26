@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { auth, db } from "../firebaseConfig";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 
 export default function HomeScreen({
   onCreate,
@@ -8,8 +10,57 @@ export default function HomeScreen({
   onProfile,
   onHome,
   onLogout,
+  onViewMeeting,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [meetings, setMeetings] = useState([]);
+
+  useEffect(() => {
+    const current = auth.currentUser;
+    if (!current) {
+      setMeetings([]);
+      return;
+    }
+    const q = query(
+      collection(db, "meetings"),
+      where("ownerUid", "==", current.uid)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = [];
+      snap.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => {
+        const ta = a.createdAt?.seconds || 0;
+        const tb = b.createdAt?.seconds || 0;
+        return tb - ta;
+      });
+      setMeetings(list);
+    });
+    return unsub;
+  }, []);
+
+  const formatMeta = (meeting) => {
+    const dateStr = meeting.date || "";
+    let weekdayStr = "";
+    if (meeting.date) {
+      const d = new Date(meeting.date);
+      if (!isNaN(d.getTime())) {
+        weekdayStr = d.toLocaleDateString(undefined, { weekday: "short" });
+      }
+    }
+
+    const whereStr =
+      meeting.type === "Online"
+        ? meeting.platform || "Online"
+        : meeting.location || "On-site";
+
+    const durationStr = meeting.duration || "";
+
+    const left = [dateStr, weekdayStr].filter(Boolean).join(" ");
+    const right = [whereStr, durationStr].filter(Boolean).join(" | ");
+    return [left, right].filter(Boolean).join(" | ");
+  };
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -63,9 +114,39 @@ export default function HomeScreen({
       {/* My Meetings */}
       <View style={styles.meetingsSection}>
         <Text style={styles.meetingsTitle}>My Meetings :</Text>
-        <Text style={styles.emptyText}>
-          No meetings yet. Create or join one to get started.
-        </Text>
+        {meetings.length === 0 ? (
+          <Text style={styles.emptyText}>
+            No meetings yet. Create or join one to get started.
+          </Text>
+        ) : (
+          <ScrollView
+            style={styles.meetingsList}
+            contentContainerStyle={{ paddingVertical: 12 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {meetings.map((m) => (
+              <View key={m.id} style={styles.meetingCard}>
+                <Text style={styles.meetingTitle}>{m.title || "Untitled"}</Text>
+                {Array.isArray(m.tags) && m.tags.length > 0 && (
+                  <View style={styles.meetingTagsRow}>
+                    {m.tags.map((tag) => (
+                      <View key={tag} style={styles.meetingTag}>
+                        <Text style={styles.meetingTagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                <Text style={styles.meetingMeta}>{formatMeta(m)}</Text>
+                <TouchableOpacity
+                  onPress={() => onViewMeeting && onViewMeeting(m)}
+                  accessibilityLabel="View and share meeting"
+                >
+                  <Text style={styles.viewShareText}>View &amp; Share</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* Bottom Nav */}
@@ -206,6 +287,50 @@ const styles = StyleSheet.create({
     color: "#9aa0a6",
     marginTop: 12,
     fontFamily: "LexendDeca_400Regular",
+  },
+  meetingsList: {
+    marginTop: 8,
+  },
+  meetingCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#cfd8dc",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    backgroundColor: "#ffffff",
+  },
+  meetingTitle: {
+    fontFamily: "LexendDeca_700Bold",
+    fontSize: 16,
+    color: "#424242",
+    marginBottom: 6,
+  },
+  meetingTagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 6,
+  },
+  meetingTag: {
+    backgroundColor: "#08a6c2",
+    borderRadius: 12,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    marginRight: 6,
+  },
+  meetingTagText: {
+    color: "#fff",
+    fontFamily: "LexendDeca_700Bold",
+    fontSize: 12,
+  },
+  meetingMeta: {
+    color: "#7a7a7a",
+    fontFamily: "LexendDeca_400Regular",
+    marginBottom: 8,
+  },
+  viewShareText: {
+    color: "#08a6c2",
+    fontFamily: "LexendDeca_700Bold",
   },
   bottomBar: {
     position: "absolute",

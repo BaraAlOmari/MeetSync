@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Dropdown } from "react-native-element-dropdown";
+import { auth, db } from "../firebaseConfig";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 const DURATIONS = ["1 Hour", "2 Hours", "3 Hours"];
 const FLEXES = ["0 mins", "15 mins", "30 mins", "1 Hour"];
@@ -25,7 +27,7 @@ const PLATFORMS = [
 ];
 const TAGS = ["Work", "College", "School", "Friends", "Family", "Others"];
 
-export default function MeetingCreationScreen({ onNext, onBack }) {
+export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(new Date());
   const [showDate, setShowDate] = useState(false);
@@ -36,6 +38,38 @@ export default function MeetingCreationScreen({ onNext, onBack }) {
   const [location, setLocation] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [selectedTags, setSelectedTags] = useState(new Set());
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!initialMeeting) return;
+    if (initialMeeting.title) setTitle(initialMeeting.title);
+    if (initialMeeting.date) {
+      const d = new Date(initialMeeting.date);
+      if (!isNaN(d.getTime())) setDate(d);
+    }
+    if (initialMeeting.duration) {
+      const idx = DURATIONS.indexOf(initialMeeting.duration);
+      if (idx >= 0) setDurationIdx(idx);
+    }
+    if (initialMeeting.timeFlex) {
+      const fIdx = FLEXES.indexOf(initialMeeting.timeFlex);
+      if (fIdx >= 0) setFlexIdx(fIdx);
+    }
+    if (initialMeeting.type) setType(initialMeeting.type);
+    if (initialMeeting.type === "Online" && initialMeeting.platform) {
+      const pIdx = PLATFORMS.indexOf(initialMeeting.platform);
+      if (pIdx >= 0) setPlatformIdx(pIdx);
+    }
+    if (initialMeeting.type === "On-site" && initialMeeting.location) {
+      setLocation(initialMeeting.location);
+    }
+    if (typeof initialMeeting.recurring === "boolean") {
+      setRecurring(initialMeeting.recurring);
+    }
+    if (Array.isArray(initialMeeting.tags)) {
+      setSelectedTags(new Set(initialMeeting.tags));
+    }
+  }, [initialMeeting]);
 
   const duration = DURATIONS[durationIdx];
   const timeFlex = FLEXES[flexIdx];
@@ -65,6 +99,36 @@ export default function MeetingCreationScreen({ onNext, onBack }) {
     [title, date, duration, timeFlex, type, platform, recurring, selectedTags]
   );
 
+  const handleNext = async () => {
+    try {
+      setSaving(true);
+      const current = auth.currentUser;
+      let meetingToReturn = { ...nextPayload };
+      if (current) {
+        if (initialMeeting && initialMeeting.id) {
+          await updateDoc(doc(db, "meetings", initialMeeting.id), {
+            ...nextPayload,
+          });
+          meetingToReturn = { ...initialMeeting, ...nextPayload };
+        } else {
+          const docRef = await addDoc(collection(db, "meetings"), {
+            ...nextPayload,
+            ownerUid: current.uid,
+            createdAt: serverTimestamp(),
+          });
+          meetingToReturn = {
+            id: docRef.id,
+            ...nextPayload,
+            ownerUid: current.uid,
+          };
+        }
+      }
+      if (onNext) onNext(meetingToReturn);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -74,12 +138,8 @@ export default function MeetingCreationScreen({ onNext, onBack }) {
             <Ionicons name="chevron-back" size={28} color="#7a7a7a" />
           </TouchableOpacity>
         ) : null}
-
         <Text style={styles.pageTitle}>Create New Meeting</Text>
       </View>
-
-
-
       <View style={styles.divider} />
 
       <KeyboardAvoidingView
@@ -285,7 +345,7 @@ export default function MeetingCreationScreen({ onNext, onBack }) {
       </KeyboardAvoidingView>
 
       <TouchableOpacity
-        onPress={() => onNext && onNext(nextPayload)}
+        onPress={saving ? undefined : handleNext}
         style={styles.fab}
         accessibilityLabel="Next"
       >

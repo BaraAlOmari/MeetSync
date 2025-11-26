@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { auth, db } from "../firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -32,6 +34,10 @@ export default function ProfileScreen({
   }, [availability]);
   const [availSets, setAvailSets] = useState(initialAvailSets);
 
+  useEffect(() => {
+    setAvailSets(initialAvailSets);
+  }, [initialAvailSets]);
+
   const toggleSlot = (day, hour) => {
     setAvailSets((prev) => {
       const next = { ...prev, [day]: new Set(prev[day]) };
@@ -47,12 +53,29 @@ export default function ProfileScreen({
     return list;
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const normalized = Object.fromEntries(
       DAYS.map((d) => [d, Array.from(availSets[d])])
     );
+
+    const current = auth.currentUser;
+    if (current) {
+      try {
+        await updateDoc(doc(db, "users", current.uid), {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          availability: normalized,
+        });
+      } catch (e) {
+        // best-effort; UI state still updates
+      }
+    }
+
     onSave &&
-      onSave({ firstName, lastName, email: user?.email || "" }, normalized);
+      onSave(
+        { firstName, lastName, email: user?.email || "", uid: current?.uid },
+        normalized
+      );
   };
 
   return (
