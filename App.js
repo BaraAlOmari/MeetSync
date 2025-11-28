@@ -213,8 +213,7 @@ export default function App() {
             <View style={styles.container}>
               <MeetingJoinScreen
                 onBack={() => navigation.goBack()}
-                onSubmit={(id) => {
-                  console.log("Joining with ID:", id);
+                onSubmit={() => {
                   navigation.navigate("Home");
                 }}
               />

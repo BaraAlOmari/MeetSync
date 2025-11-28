@@ -21,23 +21,52 @@ export default function HomeScreen({
       setMeetings([]);
       return;
     }
-    const q = query(
+    const uid = current.uid;
+
+    const ownQ = query(collection(db, "meetings"), where("ownerUid", "==", uid));
+    const partQ = query(
       collection(db, "meetings"),
-      where("ownerUid", "==", current.uid)
+      where("participantIds", "array-contains", uid)
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const list = [];
-      snap.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      list.sort((a, b) => {
+
+    let ownMeetings = [];
+    let partMeetings = [];
+
+    const recompute = () => {
+      const map = new Map();
+      ownMeetings.forEach((m) => map.set(m.id, m));
+      partMeetings.forEach((m) => map.set(m.id, m));
+      const merged = Array.from(map.values());
+      merged.sort((a, b) => {
         const ta = a.createdAt?.seconds || 0;
         const tb = b.createdAt?.seconds || 0;
         return tb - ta;
       });
-      setMeetings(list);
+      setMeetings(merged);
+    };
+
+    const unsubOwn = onSnapshot(ownQ, (snap) => {
+      const list = [];
+      snap.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      ownMeetings = list;
+      recompute();
     });
-    return unsub;
+
+    const unsubPart = onSnapshot(partQ, (snap) => {
+      const list = [];
+      snap.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      partMeetings = list;
+      recompute();
+    });
+
+    return () => {
+      unsubOwn();
+      unsubPart();
+    };
   }, []);
 
   const formatMeta = (meeting) => {
@@ -124,9 +153,19 @@ export default function HomeScreen({
             contentContainerStyle={{ paddingVertical: 12 }}
             showsVerticalScrollIndicator={false}
           >
-            {meetings.map((m) => (
-              <View key={m.id} style={styles.meetingCard}>
-                <Text style={styles.meetingTitle}>{m.title || "Untitled"}</Text>
+            {meetings.map((m) => {
+              const current = auth.currentUser;
+              const isOwner = current && m.ownerUid === current.uid;
+              const isParticipant =
+                current && Array.isArray(m.participantIds)
+                  ? m.participantIds.includes(current.uid)
+                  : false;
+              const canShare = isOwner && !m.selectedSlot;
+              const showFinding = !isOwner && isParticipant && !m.selectedSlot;
+
+              return (
+                <View key={m.id} style={styles.meetingCard}>
+                  <Text style={styles.meetingTitle}>{m.title || "Untitled"}</Text>
                 {Array.isArray(m.tags) && m.tags.length > 0 && (
                   <View style={styles.meetingTagsRow}>
                     {m.tags.map((tag) => (
@@ -137,14 +176,25 @@ export default function HomeScreen({
                   </View>
                 )}
                 <Text style={styles.meetingMeta}>{formatMeta(m)}</Text>
-                <TouchableOpacity
-                  onPress={() => onViewMeeting && onViewMeeting(m)}
-                  accessibilityLabel="View and share meeting"
-                >
-                  <Text style={styles.viewShareText}>View &amp; Share</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+                  {canShare && (
+                    <TouchableOpacity
+                      onPress={() => onViewMeeting && onViewMeeting(m)}
+                      accessibilityLabel="View and share meeting"
+                    >
+                      <Text style={styles.viewShareText}>View &amp; Share</Text>
+                    </TouchableOpacity>
+                  )}
+                  {showFinding && (
+                    <Text style={styles.findingText}>Finding Best Timing</Text>
+                  )}
+                  {!canShare && !showFinding && m.selectedSlot && (
+                    <Text style={styles.scheduledText}>
+                      Scheduled: {m.selectedSlot.label || ""}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
           </ScrollView>
         )}
       </View>
@@ -275,8 +325,10 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   meetingsSection: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 80, // space above bottom nav
   },
   meetingsTitle: {
     color: "#7a7a7a",
@@ -289,16 +341,17 @@ const styles = StyleSheet.create({
     fontFamily: "LexendDeca_400Regular",
   },
   meetingsList: {
-    marginTop: 8,
+    flex: 1,
+    marginTop: 8
   },
   meetingCard: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#cfd8dc",
+    borderColor: "#558b97ff",
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#558b9711",
   },
   meetingTitle: {
     fontFamily: "LexendDeca_700Bold",
@@ -330,6 +383,14 @@ const styles = StyleSheet.create({
   },
   viewShareText: {
     color: "#08a6c2",
+    fontFamily: "LexendDeca_700Bold",
+  },
+  findingText: {
+    color: "#ff9800",
+    fontFamily: "LexendDeca_700Bold",
+  },
+  scheduledText: {
+    color: "#388e3c",
     fontFamily: "LexendDeca_700Bold",
   },
   bottomBar: {

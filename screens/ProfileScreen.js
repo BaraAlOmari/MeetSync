@@ -67,7 +67,6 @@ export default function ProfileScreen({
           availability: normalized,
         });
       } catch (e) {
-        // best-effort; UI state still updates
       }
     }
 

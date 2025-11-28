@@ -9,13 +9,88 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { auth, db } from "../firebaseConfig";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+  arrayUnion,
+} from "firebase/firestore";
 
 export default function MeetingJoinScreen({ onBack, onSubmit }) {
   const [meetingId, setMeetingId] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleJoin = () => {
-    if (!meetingId.trim()) return;
-    onSubmit && onSubmit(meetingId.trim());
+  const handleJoin = async () => {
+    const code = meetingId.trim().toUpperCase();
+    if (!code) {
+      setError("Please enter a meeting ID.");
+      return;
+    }
+
+    const current = auth.currentUser;
+    if (!current) {
+      setError("You must be logged in to join a meeting.");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+    try {
+      const meetingsRef = collection(db, "meetings");
+      const q = query(meetingsRef, where("code", "==", code));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        setError("Meeting not found.");
+        return;
+      }
+
+      const docSnap = snap.docs[0];
+      const data = docSnap.data();
+
+      if (data.ownerUid === current.uid) {
+        setError("You are the meeting owner and cannot join with this code.");
+        return;
+      }
+
+      if (
+        Array.isArray(data.participantIds) &&
+        data.participantIds.includes(current.uid)
+      ) {
+        setError("You are already a participant in this meeting.");
+        return;
+      }
+
+      // Get participant name
+      let name = current.displayName || "";
+      const userSnap = await getDoc(doc(db, "users", current.uid));
+      if (userSnap.exists()) {
+        const u = userSnap.data();
+        const full = `${u.firstName || ""} ${u.lastName || ""}`.trim();
+        name = full || name;
+      }
+      if (!name) name = current.email || "Participant";
+
+      await updateDoc(docSnap.ref, {
+        participantIds: arrayUnion(current.uid),
+        participants: arrayUnion({
+          uid: current.uid,
+          name,
+          isGuest: false,
+        }),
+      });
+
+      onSubmit && onSubmit(docSnap.id);
+    } catch (e) {
+      setError("Could not join meeting. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,7 +116,10 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
             <Text style={styles.label}>Meeting ID</Text>
             <TextInput
               value={meetingId}
-              onChangeText={setMeetingId}
+              onChangeText={(t) => {
+                setMeetingId(t);
+                if (error) setError("");
+              }}
               placeholder="Enter meeting ID"
               placeholderTextColor="#9aa0a6"
               autoCapitalize="none"
@@ -50,10 +128,11 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
               returnKeyType="done"
               onSubmitEditing={handleJoin}
             />
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
           </View>
 
           <TouchableOpacity
-            onPress={handleJoin}
+            onPress={loading ? undefined : handleJoin}
             style={styles.primaryBtn}
             accessibilityLabel="Join Meeting"
           >
@@ -124,5 +203,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontFamily: "LexendDeca_700Bold",
+  },
+  errorText: {
+    color: "#d32f2f",
+    marginTop: 6,
+    fontFamily: "LexendDeca_400Regular",
   },
 });
