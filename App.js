@@ -190,13 +190,6 @@ export default function App() {
               <MeetingSharingScreen
                 meeting={route.params?.meeting || null}
                 onHome={() => navigation.navigate("Home")}
-                onBack={() => {
-                  if (route.params?.from === "home") {
-                    navigation.goBack();
-                  } else {
-                    navigation.navigate("MeetingCreate");
-                  }
-                }}
                 onEdit={(meeting) =>
                   navigation.navigate("MeetingCreate", {
                     meeting,

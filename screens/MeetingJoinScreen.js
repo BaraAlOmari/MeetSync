@@ -58,6 +58,11 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
         return;
       }
 
+      if (data.selectedSlot) {
+        setError("This meeting cannot be joined anymore.");
+        return;
+      }
+
       if (
         Array.isArray(data.participantIds) &&
         data.participantIds.includes(current.uid)
@@ -107,20 +112,26 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
 
       <View style={styles.divider} />
 
+      <Text style={styles.help}>
+        Join a meeting using shared meeting code.
+      </Text>
+
+      <View style={styles.divider} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
         <View style={styles.content}>
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Meeting ID</Text>
+            <Text style={styles.label}>Meeting Code</Text>
             <TextInput
               value={meetingId}
               onChangeText={(t) => {
                 setMeetingId(t);
                 if (error) setError("");
               }}
-              placeholder="Enter meeting ID"
+              placeholder="Enter meeting Code"
               placeholderTextColor="#9aa0a6"
               autoCapitalize="none"
               autoCorrect={false}
@@ -139,6 +150,10 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
             <Text style={styles.primaryBtnText}>Join</Text>
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.help}>
+          Don't have a Code? Create your own meeting and share it with others.
+        </Text>
       </KeyboardAvoidingView>
     </View>
   );
@@ -169,10 +184,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   pageTitle: {
-    color: "#558B97" ,
+    color: "#558B97",
     fontSize: 18,
     fontFamily: "LexendDeca_700Bold",
     marginHorizontal: 10,
+  },
+  help: {
+    marginVertical: 8,
+    marginHorizontal: 16,
+    color: "#9aa0a6",
+    fontFamily: "LexendDeca_400Regular",
   },
   fieldBlock: {
     marginTop: 12,

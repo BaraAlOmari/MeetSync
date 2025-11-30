@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 80, // space above bottom nav
+    paddingBottom: 80,
   },
   meetingsTitle: {
     color: "#7a7a7a",
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   viewShareText: {
-    color: "#08a6c2",
+    color: "#558b97ff",
     fontFamily: "LexendDeca_700Bold",
   },
   findingText: {

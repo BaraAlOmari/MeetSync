@@ -162,7 +162,7 @@ export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }
             <Ionicons name="chevron-back" size={28} color="#7a7a7a" />
           </TouchableOpacity>
         ) : null}
-        <Text style={styles.pageTitle}>Create New Meeting</Text>
+        <Text style={styles.pageTitle}>Create New Meeting/Event</Text>
       </View>
       <View style={styles.divider} />
 

@@ -55,6 +55,11 @@ export default function AvailabilityScreen({ onNext }) {
 
       <Text style={styles.sectionTitle}>Select your Availability:</Text>
 
+      <Text style={styles.help}>
+        Fill in your regular availability hours for each day.
+        This can be changed later in your profile settings.
+      </Text>
+
       <View style={styles.card}>
         {/* Header Row */}
         <View style={styles.gridHeaderRow}>
@@ -142,6 +147,12 @@ const styles = StyleSheet.create({
     color: "#7a7a7a",
     fontSize: 18,
     fontFamily: "LexendDeca_700Bold",
+  },
+  help: {
+    marginVertical: 8,
+    marginHorizontal: 16,
+    color: "#9aa0a6",
+    fontFamily: "LexendDeca_400Regular",
   },
   card: {
     margin: 16,

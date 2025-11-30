@@ -361,11 +361,6 @@ export default function MeetingSharingScreen({ onBack, onHome, meeting, onEdit }
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        {onBack ? (
-          <TouchableOpacity onPress={onBack} accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={28} color="#7a7a7a" />
-          </TouchableOpacity>
-        ) : null}
         <Text style={styles.pageTitle}>Share your meeting:</Text>
       </View>
       <View style={styles.divider} />
@@ -464,12 +459,12 @@ export default function MeetingSharingScreen({ onBack, onHome, meeting, onEdit }
 
 
         <View style={[styles.card, { marginTop: 20 }]}>
-          <Text style={styles.title}>Share Meeting ID</Text>
+          <Text style={styles.title}>Share Meeting Code</Text>
           <View style={[styles.card, { flexDirection: "row", justifyContent: "center", alignItems: "center" }]}>
             <Text style={styles.meetingID}>{meeting?.code || "-"}</Text>
             <TouchableOpacity
               style={{ alignItems: "center", justifyContent: "center" }}
-              accessibilityLabel="Copy meeting id"
+              accessibilityLabel="Copy meeting code"
               onPress={async () => {
                 if (!meeting?.code) return;
                 try {
