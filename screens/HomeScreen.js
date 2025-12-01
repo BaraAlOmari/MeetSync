@@ -166,16 +166,16 @@ export default function HomeScreen({
               return (
                 <View key={m.id} style={styles.meetingCard}>
                   <Text style={styles.meetingTitle}>{m.title || "Untitled"}</Text>
-                {Array.isArray(m.tags) && m.tags.length > 0 && (
-                  <View style={styles.meetingTagsRow}>
-                    {m.tags.map((tag) => (
-                      <View key={tag} style={styles.meetingTag}>
-                        <Text style={styles.meetingTagText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-                <Text style={styles.meetingMeta}>{formatMeta(m)}</Text>
+                  {Array.isArray(m.tags) && m.tags.length > 0 && (
+                    <View style={styles.meetingTagsRow}>
+                      {m.tags.map((tag) => (
+                        <View key={tag} style={styles.meetingTag}>
+                          <Text style={styles.meetingTagText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  <Text style={styles.meetingMeta}>{formatMeta(m)}</Text>
                   {canShare && (
                     <TouchableOpacity
                       onPress={() => onViewMeeting && onViewMeeting(m)}
@@ -187,9 +187,14 @@ export default function HomeScreen({
                   {showFinding && (
                     <Text style={styles.findingText}>Finding Best Timing</Text>
                   )}
-                  {!canShare && !showFinding && m.selectedSlot && (
+                  {!canShare && !showFinding && m.selectedSlot && !m.recurring && (
                     <Text style={styles.scheduledText}>
                       Scheduled: {m.selectedSlot.label || ""}
+                    </Text>
+                  )}
+                  {!canShare && !showFinding && m.selectedSlot && m.recurring && (
+                    <Text style={styles.scheduledText}>
+                      Scheduled: Every {m.selectedSlot.dayKey} {m.selectedSlot.label || ""}
                     </Text>
                   )}
                 </View>

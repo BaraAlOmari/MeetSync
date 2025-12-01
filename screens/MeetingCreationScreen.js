@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   pageTitle: {
-    color: "#558B97" ,
+    color: "#558B97",
     fontSize: 18,
     fontFamily: "LexendDeca_700Bold",
     marginHorizontal: 10,

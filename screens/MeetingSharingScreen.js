@@ -9,7 +9,7 @@ const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const START_HOUR = 8;
 const END_HOUR = 23;
 
-export default function MeetingSharingScreen({ onBack, onHome, meeting, onEdit }) {
+export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
   const [recommendedSlots, setRecommendedSlots] = useState([]);
   const [participantsList, setParticipantsList] = useState([]);
   const [calcLoading, setCalcLoading] = useState(false);
@@ -144,8 +144,7 @@ export default function MeetingSharingScreen({ onBack, onHome, meeting, onEdit }
         const displayStart = realStart;
         const displayEnd = realEnd;
 
-        // Skip any slots that would cross past midnight (24:00),
-        // so we never show times like "24:15".
+        // Skip any slots that would cross past midnight (24:00)
         if (displayStart >= 24 || displayEnd > 24) {
           continue;
         }
@@ -265,7 +264,6 @@ export default function MeetingSharingScreen({ onBack, onHome, meeting, onEdit }
       // Recompute recommended times including this new participant
       await computeRecommendedFor(updatedMeeting);
     } catch (e) {
-      // Best-effort; do not break the screen if something goes wrong
     }
   };
 
@@ -357,7 +355,7 @@ export default function MeetingSharingScreen({ onBack, onHome, meeting, onEdit }
       if (onHome) onHome();
     }
   };
-  
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -808,7 +806,7 @@ const styles = StyleSheet.create({
     fontFamily: "LexendDeca_400Regular",
   },
   participantsName: {
-        color:"#558B97",
+    color: "#558B97",
     fontFamily: "LexendDeca_400Regular",
   },
   recommendedRow: {

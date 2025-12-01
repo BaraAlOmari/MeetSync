@@ -127,6 +127,7 @@ export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
                 style={styles.input}
                 secureTextEntry
                 returnKeyType="done"
+                autoCapitalize="none"
               />
               {error ? (
                 <Text style={[styles.errorText, { alignSelf: "center" }]}>

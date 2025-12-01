@@ -113,7 +113,7 @@ export default function MeetingJoinScreen({ onBack, onSubmit }) {
       <View style={styles.divider} />
 
       <Text style={styles.help}>
-        Join a meeting using shared meeting code.
+        Join a meeting using a shared meeting code
       </Text>
 
       <View style={styles.divider} />

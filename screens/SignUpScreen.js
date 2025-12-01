@@ -194,6 +194,7 @@ export default function SignUpScreen({ onBack, onNext }) {
                 secureTextEntry
                 style={styles.input}
                 returnKeyType="next"
+                autoCapitalize="none"
               />
 
               <TextInput
@@ -207,6 +208,7 @@ export default function SignUpScreen({ onBack, onNext }) {
                 secureTextEntry
                 style={styles.input}
                 returnKeyType="done"
+                autoCapitalize="none"
               />
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
