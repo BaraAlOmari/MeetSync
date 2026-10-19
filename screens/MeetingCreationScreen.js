@@ -15,6 +15,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Dropdown } from "react-native-element-dropdown";
 import { auth, db } from "../firebaseConfig";
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { parseDateKey, toDateKey } from "../utils/date";
 
 const DURATIONS = ["1 Hour", "2 Hours", "3 Hours"];
 const FLEXES = ["0 mins", "15 mins", "30 mins", "1 Hour"];
@@ -53,8 +54,8 @@ export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }
     if (!initialMeeting) return;
     if (initialMeeting.title) setTitle(initialMeeting.title);
     if (initialMeeting.date) {
-      const d = new Date(initialMeeting.date);
-      if (!isNaN(d.getTime())) setDate(d);
+      const d = parseDateKey(initialMeeting.date);
+      if (d) setDate(d);
     }
     if (initialMeeting.duration) {
       const idx = DURATIONS.indexOf(initialMeeting.duration);
@@ -96,7 +97,7 @@ export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }
   const nextPayload = useMemo(
     () => ({
       title,
-      date: isNaN(date?.getTime?.()) ? "" : date.toISOString().slice(0, 10),
+      date: isNaN(date?.getTime?.()) ? "" : toDateKey(date),
       duration,
       timeFlex,
       type,
@@ -199,7 +200,7 @@ export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }
               >
                 {isNaN(date?.getTime?.())
                   ? "Pick a date"
-                  : date.toISOString().slice(0, 10)}
+                  : toDateKey(date)}
               </Text>
             </TouchableOpacity>
           </View>

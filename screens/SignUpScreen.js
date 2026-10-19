@@ -15,7 +15,7 @@ import { auth, db } from "../firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 
-export default function SignUpScreen({ onBack, onNext }) {
+export default function SignUpScreen({ onBack }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,15 +60,19 @@ export default function SignUpScreen({ onBack, onNext }) {
           displayName: `${firstName.trim()} ${lastName.trim()}`,
         });
       }
-      await setDoc(doc(db, "users", cred.user.uid), {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        availability: null,
-        createdAt: Date.now(),
-      });
-      if (onNext) onNext({ firstName, lastName, email, uid: cred.user.uid });
-    } catch (e) {
+      // App switches to the Availability screen as soon as the account exists,
+      // so merge instead of overwriting availability that may already be saved.
+      await setDoc(
+        doc(db, "users", cred.user.uid),
+        {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          createdAt: Date.now(),
+        },
+        { merge: true }
+      );
+    } catch {
       setError("Could not create account. Please try again.");
     } finally {
       setLoading(false);

@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { auth } from "../firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
 
-export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
+export default function LoginScreen({ onSignUpPress }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -36,13 +36,12 @@ export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
     setError("");
     try {
       setLoading(true);
-      const cred = await signInWithEmailAndPassword(
+      await signInWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
-      if (onLoginSuccess) onLoginSuccess(cred.user);
-    } catch (e) {
+    } catch {
       setError("Login failed. Check your credentials.");
     } finally {
       setLoading(false);

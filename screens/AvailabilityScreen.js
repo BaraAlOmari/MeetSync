@@ -5,12 +5,13 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { DAY_KEYS as DAYS } from "../utils/date";
 const START_HOUR = 8;
 const END_HOUR = 23;
 
@@ -106,11 +107,19 @@ export default function AvailabilityScreen({ onNext }) {
           );
           const current = auth.currentUser;
           if (current) {
-            await updateDoc(doc(db, "users", current.uid), {
-              availability: normalized,
-            });
+            try {
+              // merge: right after sign up the profile document may not exist yet
+              await setDoc(
+                doc(db, "users", current.uid),
+                { availability: normalized },
+                { merge: true }
+              );
+            } catch {
+              Alert.alert("Error", "Could not save your availability. Please try again.");
+              return;
+            }
           }
-          if (onNext) onNext(availability);
+          if (onNext) onNext();
         }}
         style={styles.fab}
         accessibilityLabel="Next"

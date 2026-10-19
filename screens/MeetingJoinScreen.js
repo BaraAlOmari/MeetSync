@@ -20,6 +20,7 @@ import {
   updateDoc,
   arrayUnion,
 } from "firebase/firestore";
+import { weekdayLabel } from "../utils/date";
 
 export default function MeetingJoinScreen({ onBack, onSubmit, meetingId }) {
   const [meetingLink, setMeetingLink] = useState("");
@@ -217,10 +218,8 @@ export default function MeetingJoinScreen({ onBack, onSubmit, meetingId }) {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "-";
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return dateStr;
-    const weekday = d.toLocaleDateString(undefined, { weekday: "short" });
-    return `${dateStr} (${weekday})`;
+    const weekday = weekdayLabel(dateStr);
+    return weekday ? `${dateStr} (${weekday})` : dateStr;
   };
 
   if (scanning) {

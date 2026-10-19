@@ -5,7 +5,7 @@ import { auth, db } from "../firebaseConfig";
 import { addDoc, collection, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import QRCode from 'react-native-qrcode-svg';
 
-const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { DAY_KEYS, dayKeyOf, weekdayLabel } from "../utils/date";
 const START_HOUR = 8;
 const END_HOUR = 23;
 
@@ -66,8 +66,7 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       return;
     }
 
-    const dayIndex = new Date(currentMeeting.date).getDay();
-    const dayKey = DAY_KEYS[dayIndex] || "";
+    const dayKey = dayKeyOf(currentMeeting.date);
     if (!dayKey) {
       setRecommendedSlots([]);
       setParticipantsList([]);
@@ -289,8 +288,7 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       return;
     }
 
-    const dayIndex = new Date(meeting.date).getDay();
-    const dayKey = DAY_KEYS[dayIndex] || "";
+    const dayKey = dayKeyOf(meeting.date);
     if (!dayKey) {
       if (onHome) onHome();
       return;
@@ -398,15 +396,9 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Date:</Text>
               <Text style={styles.detailValue}>
-                {(() => {
-                  if (!meeting.date) return "-";
-                  const d = new Date(meeting.date);
-                  if (Number.isNaN(d.getTime())) return meeting.date;
-                  const weekday = d.toLocaleDateString(undefined, {
-                    weekday: "short",
-                  });
-                  return [meeting.date, weekday].filter(Boolean).join(" ");
-                })()}
+                {meeting.date
+                  ? [meeting.date, weekdayLabel(meeting.date)].filter(Boolean).join(" ")
+                  : "-"}
               </Text>
             </View>
 

@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
 import { doc, updateDoc, collection, query, getDocs } from "firebase/firestore";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { DAY_KEYS as DAYS, dayKeyOf } from "../utils/date";
 
 export default function ProfileScreen({
   user,
@@ -55,9 +55,7 @@ export default function ProfileScreen({
           const isParticipant = data.participants?.some(p => p.uid === user.uid);
 
           if (isParticipant && data.selectedSlot && data.date) {
-            const dateObj = new Date(data.date);
-            const dayIndex = dateObj.getDay();
-            const dayName = DAYS[dayIndex];
+            const dayName = dayKeyOf(data.date);
 
             if (dayName) {
               const start = data.selectedSlot.startHour;

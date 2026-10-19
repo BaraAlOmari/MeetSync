@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "rea
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
 import { collection, onSnapshot, query, where, deleteDoc, doc } from "firebase/firestore";
+import { weekdayLabel } from "../utils/date";
 
 export default function HomeScreen({
   onCreate,
@@ -71,13 +72,7 @@ export default function HomeScreen({
 
   const formatMeta = (meeting) => {
     const dateStr = meeting.date || "";
-    let weekdayStr = "";
-    if (meeting.date) {
-      const d = new Date(meeting.date);
-      if (!isNaN(d.getTime())) {
-        weekdayStr = d.toLocaleDateString(undefined, { weekday: "short" });
-      }
-    }
+    const weekdayStr = weekdayLabel(meeting.date);
 
     const whereStr =
       meeting.type === "Online"

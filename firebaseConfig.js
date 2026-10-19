@@ -1,6 +1,12 @@
+import { Platform } from "react-native";
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  getAuth,
+  initializeAuth,
+  getReactNativePersistence,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCIcOEpH2xs5z0I03HnGHh1GPBbNtQbsGc",
@@ -13,6 +19,18 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Keep the session across app restarts. getAuth() alone only keeps it in memory
+// on React Native. initializeAuth throws if called twice (e.g. after a reload).
+function createAuth() {
+  if (Platform.OS === "web") return getAuth(app);
+  try {
+    return initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch {
+    return getAuth(app);
+  }
+}
 
+export const auth = createAuth();
+export const db = getFirestore(app);
