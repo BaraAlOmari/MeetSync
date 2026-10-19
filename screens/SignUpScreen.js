@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
@@ -221,7 +222,7 @@ export default function SignUpScreen({ onBack, onNext }) {
                 <Text
                   style={[styles.label, { color: "#08a6c2", fontSize: 16 }]}
                 >
-                  Already have an account? Log In
+                  Already have an account? <Text  style={[styles.label, { color: "#558B97", fontSize: 16 }]}>Log In</Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -231,8 +232,13 @@ export default function SignUpScreen({ onBack, onNext }) {
             style={styles.fab}
             accessibilityLabel="Create Account"
             onPress={loading ? undefined : handleSubmit}
+            disabled={loading}
           >
-            <Ionicons name="arrow-forward" size={35} color="#fff" />
+            {loading ? (
+              <ActivityIndicator size="large" color="#fff" />
+            ) : (
+              <Ionicons name="arrow-forward" size={35} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

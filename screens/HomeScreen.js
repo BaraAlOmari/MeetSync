@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, deleteDoc, doc } from "firebase/firestore";
 
 export default function HomeScreen({
   onCreate,
@@ -86,10 +86,37 @@ export default function HomeScreen({
 
     const durationStr = meeting.duration || "";
 
-    const left = [dateStr, weekdayStr].filter(Boolean).join(" ");
+    const left = meeting.recurring
+      ? [dateStr, weekdayStr].filter(Boolean).join(" Every ")
+      : [dateStr, weekdayStr].filter(Boolean).join(" ");
     const right = [whereStr, durationStr].filter(Boolean).join(" | ");
     return [left, right].filter(Boolean).join(" | ");
   };
+
+  const handleDeleteMeeting = (meeting) => {
+    if (!meeting?.id) return;
+
+    Alert.alert(
+      "Cancel Meeting",
+      "Are you sure you want to remove this meeting?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, "meetings", meeting.id));
+            } catch (e) {
+              console.log("Delete error:", e);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -176,27 +203,40 @@ export default function HomeScreen({
                     </View>
                   )}
                   <Text style={styles.meetingMeta}>{formatMeta(m)}</Text>
-                  {canShare && (
-                    <TouchableOpacity
-                      onPress={() => onViewMeeting && onViewMeeting(m)}
-                      accessibilityLabel="View and share meeting"
-                    >
-                      <Text style={styles.viewShareText}>View &amp; Share</Text>
-                    </TouchableOpacity>
-                  )}
-                  {showFinding && (
-                    <Text style={styles.findingText}>Finding Best Timing</Text>
-                  )}
-                  {!canShare && !showFinding && m.selectedSlot && !m.recurring && (
-                    <Text style={styles.scheduledText}>
-                      Scheduled: {m.selectedSlot.label || ""}
-                    </Text>
-                  )}
-                  {!canShare && !showFinding && m.selectedSlot && m.recurring && (
-                    <Text style={styles.scheduledText}>
-                      Scheduled: Every {m.selectedSlot.dayKey} {m.selectedSlot.label || ""}
-                    </Text>
-                  )}
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    {canShare && (
+                      <TouchableOpacity
+                        onPress={() => onViewMeeting && onViewMeeting(m)}
+                        accessibilityLabel="View and share meeting"
+                      >
+                        <Text style={styles.viewShareText}>View &amp; Share</Text>
+                      </TouchableOpacity>
+                    )}
+                    {showFinding && (
+                      <Text style={styles.findingText}>Finding Best Timing</Text>
+                    )}
+                    {!canShare && !showFinding && m.selectedSlot && (
+                      <>
+                        <Text style={styles.scheduledText}>
+                          Scheduled: {m.selectedSlot.label || ""}
+                        </Text>
+
+                        {isOwner && (
+                          <TouchableOpacity
+                            onPress={() => handleDeleteMeeting(m)}
+                          >
+                            <Ionicons
+                              name="trash-bin"
+                              size={20}
+                              color="#c21212ff"
+                              style={styles.joinBtnIcon}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </>
+
+                    )}
+                  </View>
                 </View>
               );
             })}
@@ -207,7 +247,7 @@ export default function HomeScreen({
       {/* Bottom Nav */}
       <View style={styles.bottomBar}>
         <TouchableOpacity onPress={onHome} accessibilityLabel="Home">
-          <Ionicons name="home" size={26} color="#08a6c2" />
+          <Ionicons name="home" size={32} color="#08a6c2" />
         </TouchableOpacity>
 
         <View style={styles.fabWrapper} pointerEvents="box-none">
@@ -216,12 +256,12 @@ export default function HomeScreen({
             accessibilityLabel="Create"
             style={styles.fab}
           >
-            <Ionicons name="add" size={30} color="#fff" />
+            <Ionicons name="add" size={34} color="#fff" />
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={onProfile} accessibilityLabel="Profile">
-          <Ionicons name="person-outline" size={26} color="#08a6c2" />
+          <Ionicons name="person-outline" size={32} color="#08a6c2" />
         </TouchableOpacity>
       </View>
 
@@ -403,9 +443,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#f6f7f8",
+    backgroundColor: "#f1f1f1ff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
+    marginHorizontal: 4,
     paddingVertical: 20,
     paddingHorizontal: 42,
     flexDirection: "row",
@@ -422,8 +463,8 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   fab: {
-    width: 64,
-    height: 64,
+    width: 75,
+    height: 75,
     borderRadius: 40,
     backgroundColor: "#08a6c2",
     alignItems: "center",

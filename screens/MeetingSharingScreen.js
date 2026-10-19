@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, TextInput, Platform, Alert } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, TextInput, Platform, Alert, Share } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Clipboard from "expo-clipboard";
 import { auth, db } from "../firebaseConfig";
 import { addDoc, collection, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
+import QRCode from 'react-native-qrcode-svg';
 
 const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const START_HOUR = 8;
@@ -30,6 +30,12 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
   const [selectedLabel, setSelectedLabel] = useState(
     meeting?.selectedSlot?.label || ""
   );
+
+  // Generate deep link
+  const deepLink = meeting?.id 
+    ? `meetsync://meeting/${meeting.id}` 
+    : "";
+
   const handleCancelMeeting = async () => {
     try {
       if (meeting?.id) {
@@ -38,6 +44,19 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
     } catch (e) {
     }
     if (onHome) onHome();
+  };
+
+  const handleShare = async () => {
+    if (!meeting?.id) return;
+    
+    try {
+      const result = await Share.share({
+        message: `Join my meeting: ${meeting.title || "Untitled Meeting"}\n\nClick here to join: ${deepLink}`,
+        title: 'Share Meeting',
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to share meeting link');
+    }
   };
 
   async function computeRecommendedFor(currentMeeting) {
@@ -70,8 +89,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       const durationStr = currentMeeting.duration || "1 Hour";
       const durationHours = parseInt(durationStr, 10) || 1;
 
-      // Simple time-flexibility handling: treat timeFlex as how much we can
-      // relax the required overlap duration across all participants.
       const flexStr = currentMeeting.timeFlex || "0";
       const numMatch = flexStr.match(/(\d+)/);
       const baseNum = numMatch ? parseInt(numMatch[1], 10) : 0;
@@ -79,7 +96,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       const flexMinutes = isHour ? baseNum * 60 : baseNum;
       const flexHours = flexMinutes / 60;
 
-      // Fetch availability for each participant
       const avails = [];
       for (const p of participants) {
         if (p.availability) {
@@ -110,12 +126,9 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       };
 
       for (let h = START_HOUR; h <= END_HOUR - durationHours + 1; h += 1) {
-        // Compute the actual meeting window in hours after applying flex.
         const realStart = h + flexHours;
         const realEnd = realStart + durationHours;
 
-        // Convert to whole hours that the meeting (including flex shift)
-        // will occupy, so we can check availability and later block them.
         const blockStart = Math.floor(realStart);
         const blockEnd = Math.ceil(realEnd);
 
@@ -139,12 +152,9 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
 
         if (!ok) continue;
 
-        // These are the times shown to the user and also the
-        // window we treat as unavailable after scheduling.
         const displayStart = realStart;
         const displayEnd = realEnd;
 
-        // Skip any slots that would cross past midnight (24:00)
         if (displayStart >= 24 || displayEnd > 24) {
           continue;
         }
@@ -172,7 +182,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
     const current = auth.currentUser;
     if (!current || meeting.ownerUid !== current.uid) return;
 
-    // Toggle off if the same slot is tapped again
     if (!meeting.selectedSlot && selectedLabel === slot.label) {
       setPendingSlot(null);
       setSelectedLabel("");
@@ -217,7 +226,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
     if (!meeting || !meeting.id) return;
 
     try {
-      // Create a guest user document with only name and availability
       const guestRef = await addDoc(collection(db, "users"), {
         firstName: name,
         lastName: "",
@@ -232,7 +240,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
         availability: normalized,
       };
 
-      // Safely append this participant using the latest meeting snapshot
       const meetingRef = doc(db, "meetings", meeting.id);
       const snap = await getDoc(meetingRef);
       const data = snap.exists() ? snap.data() || {} : {};
@@ -250,7 +257,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
         participants: nextParticipants,
       };
 
-      // Reset manual form
       setManualName("");
       setManualAvail(() => {
         const initial = {};
@@ -261,7 +267,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       });
       setShowManualGrid(false);
 
-      // Recompute recommended times including this new participant
       await computeRecommendedFor(updatedMeeting);
     } catch (e) {
     }
@@ -279,7 +284,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       return;
     }
 
-    // Only schedule when a slot is actively selected.
     if (!pendingSlot) {
       if (onHome) onHome();
       return;
@@ -295,7 +299,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
     const durationStr = meeting.duration || "1 Hour";
     const durationHours = parseInt(durationStr, 10) || 1;
 
-    // Derive flex in hours from meeting.timeFlex (15 mins, 30 mins, 1 Hour)
     const flexStr = meeting.timeFlex || "0";
     const numMatch = flexStr.match(/(\d+)/);
     const baseNum = numMatch ? parseInt(numMatch[1], 10) : 0;
@@ -303,11 +306,9 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
     const flexMinutes = isHour ? baseNum * 60 : baseNum;
     const flexHours = flexMinutes / 60;
 
-    // Compute the actual meeting window in hours, including flexibility offset.
     const realStart = pendingSlot.startHour + flexHours;
     const realEnd = realStart + durationHours;
 
-    // Round to whole hours for availability blocking.
     const blockStart = Math.floor(realStart);
     const blockEnd = Math.ceil(realEnd);
 
@@ -317,7 +318,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
     }
 
     try {
-      // Update meeting selectedSlot (single source of truth in Firestore)
       await updateDoc(doc(db, "meetings", meeting.id), {
         selectedSlot: {
           label: pendingSlot.label,
@@ -327,7 +327,6 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
       });
       setSelectedLabel(pendingSlot.label);
 
-      // Update availability for all non-guest participants, including owner.
       const participants = Array.isArray(meeting.participants)
         ? meeting.participants
         : [];
@@ -455,33 +454,48 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
           </View>
         )}
 
-
-        <View style={[styles.card, { marginTop: 20 }]}>
-          <Text style={styles.title}>Share Meeting Code</Text>
-          <View style={[styles.card, { flexDirection: "row", justifyContent: "center", alignItems: "center" }]}>
-            <Text style={styles.meetingID}>{meeting?.code || "-"}</Text>
-            <TouchableOpacity
-              style={{ alignItems: "center", justifyContent: "center" }}
-              accessibilityLabel="Copy meeting code"
-              onPress={async () => {
-                if (!meeting?.code) return;
-                try {
-                  if (Platform.OS === "web" && navigator?.clipboard?.writeText) {
-                    await navigator.clipboard.writeText(meeting.code);
-                  } else {
-                    await Clipboard.setStringAsync(meeting.code);
-                  }
-                } catch (e) {
-                }
-              }}
-            >
-              <Ionicons name="copy" size={20} color="#c3c3c3ff" />
-            </TouchableOpacity>
+        <View style={[styles.card, { marginTop: 20, alignItems: 'center' }]}>
+          <Text style={styles.title}>Share Meeting</Text>
+          
+          {/* QR Code */}
+          <View style={styles.qrContainer}>
+            {deepLink ? (
+              <QRCode
+                value={deepLink}
+                size={200}
+                color="#558B97"
+                backgroundColor="white"
+              />
+            ) : (
+              <View style={styles.qrPlaceholder}>
+                <Text style={styles.emptyText}>No meeting ID available</Text>
+              </View>
+            )}
           </View>
-          <View style={{ alignItems: "center" }}>
+
+          {/* Deep Link */}
+          <View style={styles.linkContainer}>
+            <Text style={styles.linkLabel}>Meeting Link:</Text>
+            <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="middle">
+              {deepLink || "-"}
+            </Text>
+          </View>
+
+          {/* Share Button */}
+          <TouchableOpacity
+            style={styles.shareBtn}
+            onPress={handleShare}
+            accessibilityLabel="Share meeting link"
+          >
+            <Ionicons name="share-social" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.shareBtnText}>Share Meeting</Text>
+          </TouchableOpacity>
+
+          <View style={{ alignItems: "center", marginTop: 12 }}>
             <Text style={styles.title}>OR</Text>
           </View>
-          <View style={styles.card}>
+          
+          <View style={[styles.card, {width: '100%'}]}>
             <Text style={[styles.meetingTitle, { color: "#558B97" }]}>Add Participants Manually</Text>
             <TextInput
               placeholder="Name"
@@ -647,11 +661,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  brand: {
-    textAlign: "left",
-    fontSize: 32,
-    fontFamily: "LexendDeca_700Bold",
-  },
   divider: {
     height: 1,
     backgroundColor: "#e0e0e0",
@@ -705,10 +714,6 @@ const styles = StyleSheet.create({
     fontFamily: "LexendDeca_700Bold",
     fontSize: 12,
   },
-  meetingMeta: {
-    color: "#7a7a7a",
-    fontFamily: "LexendDeca_400Regular",
-  },
   detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -726,20 +731,6 @@ const styles = StyleSheet.create({
   },
   typeOnline: {
     color: "#08a6c2",
-  },
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#f6f7f8",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 42,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
   fab: {
     position: "absolute",
@@ -765,12 +756,62 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingVertical: 4,
   },
-  meetingID: {
+  qrContainer: {
+    marginVertical: 16,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  qrPlaceholder: {
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+  },
+  linkContainer: {
+    width: '100%',
+    marginVertical: 12,
+    paddingHorizontal: 8,
+  },
+  linkLabel: {
     fontFamily: "LexendDeca_700Bold",
-    fontSize: 24,
-    color: "#08a6c2",
-    margin: 10,
-    marginTop: 5
+    fontSize: 14,
+    color: "#7a7a7a",
+    marginBottom: 6,
+  },
+  linkText: {
+    fontFamily: "LexendDeca_400Regular",
+    fontSize: 12,
+    color: "#558B97",
+    textAlign: 'center',
+  },
+  shareBtn: {
+    backgroundColor: "#08a6c2",
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    width: '100%',
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  shareBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "LexendDeca_700Bold",
   },
   input: {
     borderWidth: 0,

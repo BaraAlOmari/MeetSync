@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth } from "../firebaseConfig";
@@ -159,11 +160,16 @@ export default function LoginScreen({ onSignUpPress, onLoginSuccess }) {
           </View>
 
           <TouchableOpacity
-            style={styles.fab}
+            style={[styles.fab, loading]}
             accessibilityLabel="Continue"
             onPress={loading ? undefined : handleLogin}
+            disabled={loading}
           >
-            <Ionicons name="arrow-forward" size={35} color="#fff" />
+            {loading ? (
+              <ActivityIndicator size="large" color="#fff" />
+            ) : (
+              <Ionicons name="arrow-forward" size={35} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

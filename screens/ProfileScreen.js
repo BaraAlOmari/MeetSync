@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, query, getDocs } from "firebase/firestore";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -24,7 +24,6 @@ export default function ProfileScreen({
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
 
-  // Convert incoming arrays to Sets for efficient toggling
   const initialAvailSets = useMemo(() => {
     const m = {};
     DAYS.forEach((d) => {
@@ -32,13 +31,56 @@ export default function ProfileScreen({
     });
     return m;
   }, [availability]);
+
   const [availSets, setAvailSets] = useState(initialAvailSets);
+
+  const [meetingSets, setMeetingSets] = useState({});
 
   useEffect(() => {
     setAvailSets(initialAvailSets);
   }, [initialAvailSets]);
 
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      if (!user?.uid) return;
+      try {
+        const q = query(collection(db, "meetings"));
+        const snapshot = await getDocs(q);
+
+        const booked = {};
+        DAYS.forEach(d => booked[d] = new Set());
+
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          const isParticipant = data.participants?.some(p => p.uid === user.uid);
+
+          if (isParticipant && data.selectedSlot && data.date) {
+            const dateObj = new Date(data.date);
+            const dayIndex = dateObj.getDay();
+            const dayName = DAYS[dayIndex];
+
+            if (dayName) {
+              const start = data.selectedSlot.startHour;
+              const duration = parseInt(data.duration || "1", 10);
+
+              for (let i = 0; i < duration; i++) {
+                booked[dayName].add(start + i);
+              }
+            }
+          }
+        });
+        setMeetingSets(booked);
+      } catch (e) {
+        console.log("Error fetching meetings", e);
+      }
+    };
+
+    fetchMeetings();
+  }, [user?.uid]);
+
   const toggleSlot = (day, hour) => {
+    if (meetingSets[day]?.has(hour)) return;
+
     setAvailSets((prev) => {
       const next = { ...prev, [day]: new Set(prev[day]) };
       if (next[day].has(hour)) next[day].delete(hour);
@@ -92,7 +134,6 @@ export default function ProfileScreen({
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 180 }}
       >
-        {/* Form */}
         <View style={styles.formContainer}>
           <Text style={styles.pageTitle}>My Profile</Text>
           <Text style={styles.sectionTitle}>Edit Name</Text>
@@ -116,10 +157,26 @@ export default function ProfileScreen({
           />
         </View>
 
-        {/* Availability Editor */}
         <Text style={[styles.sectionTitle, { marginHorizontal: 16 }]}>
           Update Availability
         </Text>
+
+        {/* Legend */}
+        <View style={styles.legendContainer}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendBox, styles.slotSelected]} />
+            <Text style={styles.legendText}>Available</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendBox, styles.slotMeeting]} />
+            <Text style={styles.legendText}>Meeting</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendBox, styles.slotUnselected]} />
+            <Text style={styles.legendText}>Unavailable</Text>
+          </View>
+        </View>
+
         <View style={styles.card}>
           <View style={styles.gridHeaderRow}>
             <View style={styles.timeCol}>
@@ -145,20 +202,20 @@ export default function ProfileScreen({
                 </View>
                 {DAYS.map((d) => {
                   const selected = availSets[d].has(h);
+                  const isMeeting = meetingSets[d]?.has(h);
+
                   return (
                     <View key={`${d}-${h}`} style={styles.slotCol}>
                       <TouchableOpacity
                         onPress={() => toggleSlot(d, h)}
+                        disabled={isMeeting}
                         style={[
                           styles.slot,
-                          selected
-                            ? styles.slotSelected
-                            : styles.slotUnselected,
+                          isMeeting
+                            ? styles.slotMeeting
+                            : (selected ? styles.slotSelected : styles.slotUnselected),
                         ]}
-                        accessibilityLabel={`${d} ${String(h).padStart(
-                          2,
-                          "0"
-                        )}:00`}
+                        accessibilityLabel={`${d} ${String(h).padStart(2, "0")}:00`}
                       />
                     </View>
                   );
@@ -168,7 +225,6 @@ export default function ProfileScreen({
           </ScrollView>
         </View>
 
-        {/* Save button */}
         <View style={{ paddingHorizontal: 16 }}>
           <TouchableOpacity
             onPress={handleSave}
@@ -187,13 +243,12 @@ export default function ProfileScreen({
         </View>
       </ScrollView>
 
-      {/* Bottom nav */}
       <View style={styles.bottomBar}>
         <TouchableOpacity onPress={onHome} accessibilityLabel="Home">
-          <Ionicons name="home-outline" size={26} color="#08a6c2" />
+          <Ionicons name="home-outline" size={32} color="#08a6c2" />
         </TouchableOpacity>
         <TouchableOpacity accessibilityLabel="Profile">
-          <Ionicons name="person" size={26} color="#08a6c2" />
+          <Ionicons name="person" size={32} color="#08a6c2" />
         </TouchableOpacity>
       </View>
       <View style={styles.fabWrapper} pointerEvents="box-none">
@@ -202,7 +257,7 @@ export default function ProfileScreen({
           accessibilityLabel="Create"
           style={styles.fab}
         >
-          <Ionicons name="add" size={30} color="#fff" />
+          <Ionicons name="add" size={34} color="#fff" />
         </TouchableOpacity>
       </View>
     </View>
@@ -260,6 +315,7 @@ const styles = StyleSheet.create({
   },
   card: {
     margin: 16,
+    marginTop: 8,
     backgroundColor: "#f0f2f4",
     borderRadius: 12,
     paddingVertical: 8,
@@ -318,6 +374,9 @@ const styles = StyleSheet.create({
   slotUnselected: {
     backgroundColor: "#cfd8dc",
   },
+  slotMeeting: {
+    backgroundColor: "#FFA726",
+  },
   saveBtn: {
     backgroundColor: "#08a6c2",
     borderRadius: 10,
@@ -335,14 +394,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#f6f7f8",
+    backgroundColor: "#f1f1f1ff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
+    marginHorizontal: 4,
     paddingVertical: 20,
     paddingHorizontal: 42,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    overflow: "visible",
   },
   fabWrapper: {
     position: "absolute",
@@ -352,8 +413,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   fab: {
-    width: 64,
-    height: 64,
+    width: 75,
+    height: 75,
     borderRadius: 40,
     backgroundColor: "#08a6c2",
     alignItems: "center",
@@ -364,5 +425,27 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 8,
     zIndex: 51,
+  },
+  legendContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  legendBox: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  legendText: {
+    color: "#7a7a7a",
+    fontFamily: "LexendDeca_400Regular",
+    fontSize: 12,
   },
 });

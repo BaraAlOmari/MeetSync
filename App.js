@@ -19,10 +19,12 @@ import ProfileScreen from "./screens/ProfileScreen";
 import MeetingCreationScreen from "./screens/MeetingCreationScreen";
 import MeetingSharingScreen from "./screens/MeetingSharingScreen";
 import MeetingJoinScreen from "./screens/MeetingJoinScreen";
+import * as Linking from "expo-linking";
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const prefix = Linking.createURL("/");
   const [fontsLoaded] = useFonts({
     LexendDeca_400Regular,
     LexendDeca_700Bold,
@@ -43,8 +45,20 @@ export default function App() {
   if (!fontsLoaded) {
     return null;
   }
+
+  const linking = {
+  prefixes: ["meetsync://"],
+  config: {
+    screens: {
+      Join: {
+        path: "meeting/:meetingId",
+      },
+    },
+  },
+};
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <StatusBar style="dark" />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login">
@@ -202,9 +216,10 @@ export default function App() {
         </Stack.Screen>
 
         <Stack.Screen name="Join">
-          {({ navigation }) => (
+          {({ navigation, route }) => (
             <View style={styles.container}>
               <MeetingJoinScreen
+                meetingId={route.params?.meetingId}
                 onBack={() => navigation.goBack()}
                 onSubmit={() => {
                   navigation.navigate("Home");

@@ -4,24 +4,57 @@
     "slug": "MeetSync",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "meetsync",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon2.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MeetSync to access your camera to scan QR codes for joining meetings."
+        }
+      ]
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.meetsync",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow MeetSync to access your camera to scan QR codes for joining meetings."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon2.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.yourcompany.meetsync",
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "meetsync"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "navigationBar": {
         "visible": "leanback",
         "backgroundColor": "#f6f7f8",
@@ -35,6 +68,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f5474ae0-1ead-4a73-9cca-af65b9fd12a4"
+      }
+    },
+    "owner": "b7xb"
   }
 }
