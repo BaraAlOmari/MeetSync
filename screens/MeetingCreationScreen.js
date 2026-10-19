@@ -28,15 +28,6 @@ const PLATFORMS = [
 ];
 const TAGS = ["Work", "College", "School", "Friends", "Family", "Others"];
 
-const generateMeetingCode = () => {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let out = "";
-  for (let i = 0; i < 6; i += 1) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return out;
-};
-
 export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(new Date());
@@ -122,8 +113,7 @@ export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }
           meetingToReturn = { ...initialMeeting, ...nextPayload };
         } else {
           const ownerName =
-            current.displayName || current.email || "Meeting owner";
-          const code = generateMeetingCode();
+            current.displayName || "Meeting owner";
           const ownerParticipant = {
             uid: current.uid,
             name: ownerName,
@@ -133,7 +123,6 @@ export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }
           const docRef = await addDoc(collection(db, "meetings"), {
             ...nextPayload,
             ownerUid: current.uid,
-            code,
             participantIds: [current.uid],
             participants: [ownerParticipant],
             createdAt: serverTimestamp(),
@@ -142,7 +131,6 @@ export default function MeetingCreationScreen({ initialMeeting, onNext, onBack }
             id: docRef.id,
             ...nextPayload,
             ownerUid: current.uid,
-            code,
             participantIds: [current.uid],
             participants: [ownerParticipant],
           };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
@@ -11,7 +11,15 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { auth, db } from "./firebaseConfig";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  deleteField,
+  doc,
+  onSnapshot,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import LoginScreen from "./screens/LoginScreen";
 import SignUpScreen from "./screens/SignUpScreen";
 import AvailabilityScreen from "./screens/AvailabilityScreen";
@@ -20,6 +28,8 @@ import ProfileScreen from "./screens/ProfileScreen";
 import MeetingCreationScreen from "./screens/MeetingCreationScreen";
 import MeetingSharingScreen from "./screens/MeetingSharingScreen";
 import MeetingJoinScreen from "./screens/MeetingJoinScreen";
+import { toDateKey } from "./utils/date";
+import { computeBusy } from "./utils/scheduling";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -47,6 +57,39 @@ const linking = {
   },
 };
 
+// Keeps users/{uid}.busy in step with the scheduled meetings this user is in.
+// Each user writes only their own profile; others read it for recommendations.
+function useBusySync(authUser, profile) {
+  const savedBusy = useRef(undefined);
+  savedBusy.current = profile?.busy;
+  const profileLoaded = profile !== undefined;
+
+  useEffect(() => {
+    if (!authUser || !profileLoaded) return;
+    const q = query(
+      collection(db, "meetings"),
+      where("participantIds", "array-contains", authUser.uid)
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const busy = computeBusy(
+          snap.docs.map((d) => d.data()),
+          toDateKey(new Date())
+        );
+        if (JSON.stringify(busy) === JSON.stringify(savedBusy.current || [])) {
+          return;
+        }
+        savedBusy.current = busy;
+        setDoc(doc(db, "users", authUser.uid), { busy }, { merge: true }).catch(
+          () => {}
+        );
+      },
+      () => {}
+    );
+  }, [authUser, profileLoaded]);
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     LexendDeca_400Regular,
@@ -68,6 +111,20 @@ export default function App() {
       () => setProfile({})
     );
   }, [authUser]);
+
+  useBusySync(authUser, profile);
+
+  // Profiles are readable by other signed-in users, so the email lives only in
+  // Firebase Auth. Remove it from profiles created before that change.
+  const hasStoredEmail = !!profile?.email;
+  useEffect(() => {
+    if (!authUser || !hasStoredEmail) return;
+    setDoc(
+      doc(db, "users", authUser.uid),
+      { email: deleteField() },
+      { merge: true }
+    ).catch(() => {});
+  }, [authUser, hasStoredEmail]);
 
   const ready =
     fontsLoaded &&
@@ -162,6 +219,7 @@ export default function App() {
                   <ProfileScreen
                     user={user}
                     availability={availability}
+                    busy={profile.busy}
                     onSave={() => navigation.navigate("Home")}
                     onHome={() => navigation.navigate("Home")}
                     onLogout={handleLogout}

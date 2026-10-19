@@ -67,7 +67,6 @@ export default function SignUpScreen({ onBack }) {
         {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          email: email.trim(),
           createdAt: Date.now(),
         },
         { merge: true }

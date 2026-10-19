@@ -100,7 +100,7 @@ export default function MeetingJoinScreen({ onBack, onSubmit, meetingId }) {
         if (ownerSnap.exists()) {
           const ownerData = ownerSnap.data();
           const fullName = `${ownerData.firstName || ""} ${ownerData.lastName || ""}`.trim();
-          ownerName = fullName || ownerData.email || "Unknown";
+          ownerName = fullName || "Unknown";
         }
       }
 
@@ -168,7 +168,7 @@ export default function MeetingJoinScreen({ onBack, onSubmit, meetingId }) {
         const full = `${u.firstName || ""} ${u.lastName || ""}`.trim();
         name = full || name;
       }
-      if (!name) name = current.email || "Participant";
+      if (!name) name = "Participant";
 
       await updateDoc(meetingRef, {
         participantIds: arrayUnion(current.uid),

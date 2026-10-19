@@ -6,16 +6,18 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
-import { doc, updateDoc, collection, query, getDocs } from "firebase/firestore";
-
-import { DAY_KEYS as DAYS, dayKeyOf } from "../utils/date";
+import { doc, setDoc } from "firebase/firestore";
+import { DAY_KEYS as DAYS, dayKeyOf, toDateKey } from "../utils/date";
+import { busyHoursOn } from "../utils/scheduling";
 
 export default function ProfileScreen({
   user,
   availability,
+  busy,
   onSave,
   onHome,
   onLogout,
@@ -24,57 +26,39 @@ export default function ProfileScreen({
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
 
+  // The profile is a live snapshot, so a new object arrives on every write
+  // (e.g. a busy-hours sync). Only reset unsaved edits when the content changes.
+  const availabilityKey = JSON.stringify(availability || {});
   const initialAvailSets = useMemo(() => {
+    const saved = JSON.parse(availabilityKey);
     const m = {};
     DAYS.forEach((d) => {
-      m[d] = new Set((availability && availability[d]) || []);
+      m[d] = new Set(saved[d] || []);
     });
     return m;
-  }, [availability]);
+  }, [availabilityKey]);
 
   const [availSets, setAvailSets] = useState(initialAvailSets);
 
-  const [meetingSets, setMeetingSets] = useState({});
+  // Booked hours over the next 7 days, shown on top of the weekly template.
+  const meetingSets = useMemo(() => {
+    const booked = {};
+    DAYS.forEach((d) => {
+      booked[d] = new Set();
+    });
+    const today = new Date();
+    for (let i = 0; i < 7; i += 1) {
+      const dateKey = toDateKey(
+        new Date(today.getFullYear(), today.getMonth(), today.getDate() + i)
+      );
+      busyHoursOn(busy, dateKey).forEach((h) => booked[dayKeyOf(dateKey)].add(h));
+    }
+    return booked;
+  }, [busy]);
 
   useEffect(() => {
     setAvailSets(initialAvailSets);
   }, [initialAvailSets]);
-
-  useEffect(() => {
-    const fetchMeetings = async () => {
-      if (!user?.uid) return;
-      try {
-        const q = query(collection(db, "meetings"));
-        const snapshot = await getDocs(q);
-
-        const booked = {};
-        DAYS.forEach(d => booked[d] = new Set());
-
-        snapshot.docs.forEach(docSnap => {
-          const data = docSnap.data();
-          const isParticipant = data.participants?.some(p => p.uid === user.uid);
-
-          if (isParticipant && data.selectedSlot && data.date) {
-            const dayName = dayKeyOf(data.date);
-
-            if (dayName) {
-              const start = data.selectedSlot.startHour;
-              const duration = parseInt(data.duration || "1", 10);
-
-              for (let i = 0; i < duration; i++) {
-                booked[dayName].add(start + i);
-              }
-            }
-          }
-        });
-        setMeetingSets(booked);
-      } catch (e) {
-        console.log("Error fetching meetings", e);
-      }
-    };
-
-    fetchMeetings();
-  }, [user?.uid]);
 
   const toggleSlot = (day, hour) => {
     if (meetingSets[day]?.has(hour)) return;
@@ -101,20 +85,22 @@ export default function ProfileScreen({
     const current = auth.currentUser;
     if (current) {
       try {
-        await updateDoc(doc(db, "users", current.uid), {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          availability: normalized,
-        });
-      } catch (e) {
+        await setDoc(
+          doc(db, "users", current.uid),
+          {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            availability: normalized,
+          },
+          { merge: true }
+        );
+      } catch {
+        Alert.alert("Error", "Could not save your profile. Please try again.");
+        return;
       }
     }
 
-    onSave &&
-      onSave(
-        { firstName, lastName, email: user?.email || "", uid: current?.uid },
-        normalized
-      );
+    onSave && onSave();
   };
 
   return (

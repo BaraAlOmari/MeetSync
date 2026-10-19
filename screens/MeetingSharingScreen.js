@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, TextInput, Platform, Alert, Share } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, TextInput, Alert, Share } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebaseConfig";
-import { addDoc, collection, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
+import { arrayUnion, collection, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import QRCode from 'react-native-qrcode-svg';
-
 import { DAY_KEYS, dayKeyOf, weekdayLabel } from "../utils/date";
-const START_HOUR = 8;
-const END_HOUR = 23;
+import { END_HOUR, START_HOUR, recommendSlots } from "../utils/scheduling";
 
 export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
   const [recommendedSlots, setRecommendedSlots] = useState([]);
@@ -60,113 +58,32 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
   };
 
   async function computeRecommendedFor(currentMeeting) {
-    if (!currentMeeting || !currentMeeting.date) {
-      setRecommendedSlots([]);
-      setParticipantsList([]);
-      return;
-    }
-
-    const dayKey = dayKeyOf(currentMeeting.date);
-    if (!dayKey) {
-      setRecommendedSlots([]);
-      setParticipantsList([]);
-      return;
-    }
-
-    const participants = Array.isArray(currentMeeting.participants)
+    const participants = Array.isArray(currentMeeting?.participants)
       ? currentMeeting.participants
       : [];
     setParticipantsList(participants);
 
-    if (participants.length < 2) {
+    if (!dayKeyOf(currentMeeting?.date) || participants.length < 2) {
       setRecommendedSlots([]);
       return;
     }
 
     setCalcLoading(true);
     try {
-      const durationStr = currentMeeting.duration || "1 Hour";
-      const durationHours = parseInt(durationStr, 10) || 1;
-
-      const flexStr = currentMeeting.timeFlex || "0";
-      const numMatch = flexStr.match(/(\d+)/);
-      const baseNum = numMatch ? parseInt(numMatch[1], 10) : 0;
-      const isHour = /hour/i.test(flexStr);
-      const flexMinutes = isHour ? baseNum * 60 : baseNum;
-      const flexHours = flexMinutes / 60;
-
-      const avails = [];
-      for (const p of participants) {
-        if (p.availability) {
-          avails.push(p.availability);
-          continue;
-        }
-        if (p.uid) {
+      // Guests carry their availability on the meeting; users have it on
+      // their profile along with the hours they've already booked.
+      const schedules = await Promise.all(
+        participants.map(async (p) => {
+          if (p.isGuest) return { availability: p.availability || {} };
+          if (!p.uid) return { availability: {} };
           const snap = await getDoc(doc(db, "users", p.uid));
-          if (snap.exists()) {
-            const data = snap.data();
-            avails.push(data.availability || {});
-          } else {
-            avails.push({});
-          }
-        } else {
-          avails.push({});
-        }
-      }
-
-      const slots = [];
-
-      const toLabel = (timeFloat) => {
-        const hour = Math.floor(timeFloat);
-        const minutes = Math.round((timeFloat - hour) * 60);
-        const hh = String(hour).padStart(2, "0");
-        const mm = String(minutes).padStart(2, "0");
-        return `${hh}:${mm}`;
-      };
-
-      for (let h = START_HOUR; h <= END_HOUR - durationHours + 1; h += 1) {
-        const realStart = h + flexHours;
-        const realEnd = realStart + durationHours;
-
-        const blockStart = Math.floor(realStart);
-        const blockEnd = Math.ceil(realEnd);
-
-        if (blockStart < START_HOUR || blockEnd > END_HOUR + 1) {
-          continue;
-        }
-
-        let ok = true;
-        for (let i = 0; i < avails.length && ok; i += 1) {
-          const availDay = Array.isArray(avails[i][dayKey])
-            ? avails[i][dayKey]
-            : [];
-          const set = new Set(availDay);
-          for (let hour = blockStart; hour < blockEnd; hour += 1) {
-            if (!set.has(hour)) {
-              ok = false;
-              break;
-            }
-          }
-        }
-
-        if (!ok) continue;
-
-        const displayStart = realStart;
-        const displayEnd = realEnd;
-
-        if (displayStart >= 24 || displayEnd > 24) {
-          continue;
-        }
-
-        const startLabel = toLabel(displayStart);
-        const endLabel = toLabel(displayEnd);
-        slots.push({
-          startHour: h,
-          label: `${startLabel} - ${endLabel}`,
-        });
-      }
-
-      setRecommendedSlots(slots);
+          const data = snap.exists() ? snap.data() : {};
+          return { availability: data.availability || {}, busy: data.busy };
+        })
+      );
+      setRecommendedSlots(recommendSlots(currentMeeting, schedules));
+    } catch {
+      setRecommendedSlots([]);
     } finally {
       setCalcLoading(false);
     }
@@ -224,133 +141,74 @@ export default function MeetingSharingScreen({ onHome, meeting, onEdit }) {
 
     if (!meeting || !meeting.id) return;
 
+    // Guests only exist on this meeting. The id just needs to be unique, so
+    // borrow Firestore's generator without writing anything.
+    const newParticipant = {
+      guestId: doc(collection(db, "meetings")).id,
+      name,
+      isGuest: true,
+      availability: normalized,
+    };
+
     try {
-      const guestRef = await addDoc(collection(db, "users"), {
-        firstName: name,
-        lastName: "",
-        availability: normalized,
-        isGuest: true,
+      // arrayUnion so a guest added while someone joins doesn't overwrite them
+      await updateDoc(doc(db, "meetings", meeting.id), {
+        participants: arrayUnion(newParticipant),
       });
-
-      const newParticipant = {
-        uid: guestRef.id,
-        name,
-        isGuest: true,
-        availability: normalized,
-      };
-
-      const meetingRef = doc(db, "meetings", meeting.id);
-      const snap = await getDoc(meetingRef);
-      const data = snap.exists() ? snap.data() || {} : {};
-      const existingParticipants = Array.isArray(data.participants)
-        ? data.participants
-        : [];
-      const nextParticipants = [...existingParticipants, newParticipant];
-
-      await updateDoc(meetingRef, {
-        participants: nextParticipants,
-      });
-
-      const updatedMeeting = {
-        ...meeting,
-        participants: nextParticipants,
-      };
-
-      setManualName("");
-      setManualAvail(() => {
-        const initial = {};
-        DAY_KEYS.forEach((d) => {
-          initial[d] = new Set();
-        });
-        return initial;
-      });
-      setShowManualGrid(false);
-
-      await computeRecommendedFor(updatedMeeting);
-    } catch (e) {
+    } catch {
+      Alert.alert("Error", "Could not add the participant. Please try again.");
+      return;
     }
+
+    const snap = await getDoc(doc(db, "meetings", meeting.id)).catch(() => null);
+    const updatedMeeting = snap?.exists()
+      ? { ...meeting, ...snap.data() }
+      : {
+          ...meeting,
+          participants: [...(meeting.participants || []), newParticipant],
+        };
+
+    setManualName("");
+    setManualAvail(() => {
+      const initial = {};
+      DAY_KEYS.forEach((d) => {
+        initial[d] = new Set();
+      });
+      return initial;
+    });
+    setShowManualGrid(false);
+
+    await computeRecommendedFor(updatedMeeting);
   };
 
   const handleConfirmSelection = async () => {
-    if (!meeting || !meeting.id || !meeting.date) {
-      if (onHome) onHome();
-      return;
-    }
-
     const current = auth.currentUser;
-    if (!current || meeting.ownerUid !== current.uid) {
+    if (
+      !meeting?.id ||
+      !current ||
+      meeting.ownerUid !== current.uid ||
+      !pendingSlot ||
+      !dayKeyOf(meeting.date)
+    ) {
       if (onHome) onHome();
       return;
     }
 
-    if (!pendingSlot) {
-      if (onHome) onHome();
-      return;
-    }
-
-    const dayKey = dayKeyOf(meeting.date);
-    if (!dayKey) {
-      if (onHome) onHome();
-      return;
-    }
-
-    const durationStr = meeting.duration || "1 Hour";
-    const durationHours = parseInt(durationStr, 10) || 1;
-
-    const flexStr = meeting.timeFlex || "0";
-    const numMatch = flexStr.match(/(\d+)/);
-    const baseNum = numMatch ? parseInt(numMatch[1], 10) : 0;
-    const isHour = /hour/i.test(flexStr);
-    const flexMinutes = isHour ? baseNum * 60 : baseNum;
-    const flexHours = flexMinutes / 60;
-
-    const realStart = pendingSlot.startHour + flexHours;
-    const realEnd = realStart + durationHours;
-
-    const blockStart = Math.floor(realStart);
-    const blockEnd = Math.ceil(realEnd);
-
-    const hoursToBlock = [];
-    for (let h = blockStart; h < blockEnd; h += 1) {
-      hoursToBlock.push(h);
-    }
-
+    // Only the meeting changes. Each participant's app picks up the booking
+    // and updates their own busy hours (see useBusySync in App.js).
     try {
       await updateDoc(doc(db, "meetings", meeting.id), {
         selectedSlot: {
           label: pendingSlot.label,
           startHour: pendingSlot.startHour,
-          dayKey,
+          dayKey: dayKeyOf(meeting.date),
         },
       });
-      setSelectedLabel(pendingSlot.label);
-
-      const participants = Array.isArray(meeting.participants)
-        ? meeting.participants
-        : [];
-
-      for (const p of participants) {
-        if (!p.uid || p.isGuest) continue;
-
-        const userRef = doc(db, "users", p.uid);
-        const snap = await getDoc(userRef);
-        if (!snap.exists()) continue;
-        const data = snap.data() || {};
-        const avail = data.availability || {};
-        const dayArr = Array.isArray(avail[dayKey]) ? avail[dayKey] : [];
-        const filteredDay = dayArr.filter(
-          (h) => !hoursToBlock.includes(h)
-        );
-        await updateDoc(userRef, {
-          availability: {
-            ...avail,
-            [dayKey]: filteredDay,
-          },
-        });
-      }
-    } finally {
-      if (onHome) onHome();
+    } catch {
+      Alert.alert("Error", "Could not schedule the meeting. Please try again.");
+      return;
     }
+    if (onHome) onHome();
   };
 
   return (
