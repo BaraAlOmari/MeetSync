@@ -1,0 +1,98 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isStringMax(value, max) {
+      return value is string && value.size() <= max;
+    }
+
+    // users/{uid}: name, weekly availability template and booked hours.
+    // Other users read a profile by id to compute recommended times, but
+    // can't list profiles, and only the owner can write one.
+    match /users/{uid} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create, update: if request.auth.uid == uid
+        && validProfile(request.resource.data);
+      allow delete: if request.auth.uid == uid;
+    }
+
+    function validProfile(d) {
+      // "email" is only allowed so old profiles can still be updated while
+      // the app deletes it (see App.js).
+      return d.keys().hasOnly([
+          'firstName', 'lastName', 'email', 'availability', 'busy', 'createdAt'
+        ])
+        && (!('firstName' in d) || isStringMax(d.firstName, 100))
+        && (!('lastName' in d) || isStringMax(d.lastName, 100))
+        && (!('availability' in d) || d.availability == null || d.availability is map)
+        && (!('busy' in d) || (d.busy is list && d.busy.size() <= 500));
+    }
+
+    match /meetings/{meetingId} {
+      // The meeting id is the invite link, so anyone signed in who has it can
+      // open the meeting. Listing only returns meetings you own or are in.
+      allow get: if signedIn();
+      allow list: if signedIn()
+        && (resource.data.ownerUid == request.auth.uid
+          || request.auth.uid in resource.data.participantIds);
+
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.participantIds == [request.auth.uid]
+        && validMeeting(request.resource.data);
+
+      allow update: if signedIn()
+        && validMeeting(request.resource.data)
+        && (ownerUpdate() || selfJoin());
+
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // The owner can edit anything and remove people, but can't add other
+      // accounts (they join themselves) or hand the meeting to someone else.
+      function ownerUpdate() {
+        return resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && resource.data.participantIds.toSet()
+            .hasAll(request.resource.data.participantIds)
+          && request.auth.uid in request.resource.data.participantIds;
+      }
+
+      // Anyone else may only append themselves, before a time is picked.
+      function selfJoin() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let n = before.participants.size();
+        let added = after.participants[n];
+        return !(request.auth.uid in before.participantIds)
+          && !('selectedSlot' in before)
+          && after.diff(before).affectedKeys().hasOnly(['participantIds', 'participants'])
+          && after.participantIds == before.participantIds.concat([request.auth.uid])
+          && after.participants.size() == n + 1
+          && after.participants[0:n] == before.participants
+          && added.keys().hasOnly(['uid', 'name', 'isGuest'])
+          && added.uid == request.auth.uid
+          && added.isGuest == false
+          && isStringMax(added.name, 200);
+      }
+    }
+
+    function validMeeting(d) {
+      // "code" is from the old join-by-code flow and only kept for old meetings.
+      return d.keys().hasOnly([
+          'title', 'date', 'duration', 'timeFlex', 'type', 'platform',
+          'location', 'recurring', 'tags', 'ownerUid', 'code',
+          'participantIds', 'participants', 'createdAt', 'selectedSlot'
+        ])
+        && isStringMax(d.title, 200)
+        && d.date is string
+        && d.participantIds is list && d.participantIds.size() <= 100
+        && d.participants is list && d.participants.size() <= 100;
+    }
+  }
+}

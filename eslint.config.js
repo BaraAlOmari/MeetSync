@@ -12,4 +12,8 @@ module.exports = defineConfig([
     files: ["**/__tests__/**/*.js", "**/*.test.js"],
     languageOptions: { globals: globals.jest },
   },
+  {
+    files: ["firestore-tests/**/*.js"],
+    languageOptions: { globals: globals.node },
+  },
 ]);

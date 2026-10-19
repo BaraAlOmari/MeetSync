@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "test:tz": "node scripts/test-timezones.js"
+    "test:tz": "node scripts/test-timezones.js",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-meetsync \"jest -c jest.rules.config.js\""
   },
   "dependencies": {
     "@expo-google-fonts/lexend-deca": "^0.4.1",
@@ -19,9 +20,10 @@
     "@react-navigation/native": "^7.1.22",
     "@react-navigation/native-stack": "^7.6.2",
     "eslint-config-expo": "~10.0.0",
-    "expo": "~54.0.30",
+    "expo": "~54.0.37",
     "expo-camera": "~17.0.10",
-    "expo-linking": "^8.0.11",
+    "expo-font": "~14.0.12",
+    "expo-linking": "~8.0.12",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "firebase": "^12.6.0",
@@ -37,6 +39,7 @@
   },
   "private": true,
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~10.0.0",
     "globals": "^17.13.0"
@@ -46,7 +49,8 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/android/",
-      "/ios/"
+      "/ios/",
+      "/firestore-tests/"
     ]
   }
 }
