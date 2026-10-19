@@ -333,7 +333,7 @@ export default function MeetingJoinScreen({ onBack, onSubmit, meetingId }) {
         </View>
 
         <Text style={styles.help}>
-          Don't have a link? Create your own meeting and share it with others.
+          Don&apos;t have a link? Create your own meeting and share it with others.
         </Text>
       </KeyboardAvoidingView>
 

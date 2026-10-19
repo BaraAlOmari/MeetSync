@@ -4,42 +4,44 @@
     "slug": "MeetSync",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon2.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "meetsync",
-    "splash": {
-      "image": "./assets/icon2.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow MeetSync to access your camera to scan QR codes for joining meetings."
+          "cameraPermission": "Allow MeetSync to access your camera to scan QR codes for joining meetings.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ]
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.meetsync",
-      "infoPlist": {
-        "NSCameraUsageDescription": "Allow MeetSync to access your camera to scan QR codes for joining meetings."
-      }
+      "bundleIdentifier": "com.yourcompany.meetsync"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon2.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.yourcompany.meetsync",
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
-        "CAMERA",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ],
       "intentFilters": [
         {
@@ -64,7 +66,10 @@
         "backgroundColor": "#08a6c2",
         "barStyle": "light-content",
         "translucent": false
-      }
+      },
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
